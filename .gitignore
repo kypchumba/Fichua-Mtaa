@@ -1,0 +1,24 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Java/Maven output
+backend/target/
+backend/.m2repository/
+*.class
+
+# Frontend dependencies and output
+frontend/node_modules/
+frontend/dist/
+
+# IDE, OS, logs, and temporary files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
