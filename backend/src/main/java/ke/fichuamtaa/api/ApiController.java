@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.HexFormat;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.*;
@@ -277,15 +278,24 @@ class ApiController {
       signed.forEach((key, value) -> body.part(key, value));
       body.part("api_key", cloudKey);
       body.part("signature", signature);
-      Map result =
+      Map<String, Object> result =
           RestClient.create()
               .post()
               .uri("https://api.cloudinary.com/v1_1/" + cloudName + "/image/upload")
               .contentType(MediaType.MULTIPART_FORM_DATA)
               .body(body.build())
               .retrieve()
-              .body(Map.class);
-      return Map.of("url", (String) result.get("secure_url"));
+              .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+      // Treat the provider response as external input before storing or returning its URL.
+      Object secureUrlValue = result == null ? null : result.get("secure_url");
+      if (!(secureUrlValue instanceof String secureUrl)
+          || !isValidCloudinaryUrl(secureUrl)) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_GATEWAY, "Image upload returned an invalid image URL.");
+      }
+
+      return Map.of("url", secureUrl);
     } catch (ResponseStatusException e) {
       throw e;
     } catch (Exception e) {
@@ -322,6 +332,21 @@ class ApiController {
         && new String(b, 0, 4, StandardCharsets.US_ASCII).equals("RIFF")
         && new String(b, 8, 4, StandardCharsets.US_ASCII).equals("WEBP")) return "webp";
     return null;
+  }
+
+  private boolean isValidCloudinaryUrl(String value) {
+    try {
+      java.net.URI uri = java.net.URI.create(value);
+      String expectedPathPrefix = "/" + cloudName + "/image/upload/";
+
+      return "https".equalsIgnoreCase(uri.getScheme())
+          && "res.cloudinary.com".equalsIgnoreCase(uri.getHost())
+          && uri.getUserInfo() == null
+          && uri.getPath() != null
+          && uri.getPath().startsWith(expectedPathPrefix);
+    } catch (IllegalArgumentException ignored) {
+      return false;
+    }
   }
 
   @GetMapping("/admin/requests")
