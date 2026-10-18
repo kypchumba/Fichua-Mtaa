@@ -3,6 +3,40 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Alert, Button, Field } from "../components/UI";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateFields(fields, register) {
+  const errors = {};
+
+  if (register && !fields.fullName.trim()) {
+    errors.fullName = "Please enter your full name.";
+  }
+
+  if (!fields.email.trim()) {
+    errors.email = "Please enter your email address.";
+  } else if (!EMAIL_PATTERN.test(fields.email.trim())) {
+    errors.email = "Please enter a valid email address.";
+  }
+
+  if (!fields.password) {
+    errors.password = "Please enter your password.";
+  } else if (register && fields.password.length < 10) {
+    errors.password = "Password must be at least 10 characters.";
+  } else if (register && fields.password.length > 72) {
+    errors.password = "Password must be 72 characters or fewer.";
+  } else if (register && !/(?=.*[A-Za-z])(?=.*\d)/.test(fields.password)) {
+    errors.password = "Password must contain a letter and a number.";
+  }
+
+  if (register && !fields.confirmation) {
+    errors.confirmation = "Please confirm your password.";
+  } else if (register && fields.password !== fields.confirmation) {
+    errors.confirmation = "Your passwords do not match.";
+  }
+
+  return errors;
+}
+
 export function AuthPage({ register = false }) {
   const { user, login, register: createAccount } = useAuth();
   const navigate = useNavigate();
@@ -20,13 +54,14 @@ export function AuthPage({ register = false }) {
       <Navigate to={user.role === "ADMIN" ? "/admin" : "/requests"} replace />
     );
   const update = (e) =>
-    setFields({ ...fields, [e.target.name]: e.target.value });
+    setFields((current) => ({ ...current, [e.target.name]: e.target.value }));
   async function submit(e) {
     e.preventDefault();
     setError("");
     setFieldErrors({});
-    if (register && fields.password !== fields.confirmation) {
-      setFieldErrors({ confirmation: "Your passwords do not match." });
+    const validationErrors = validateFields(fields, register);
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
       return;
     }
     setLoading(true);
@@ -41,7 +76,7 @@ export function AuthPage({ register = false }) {
         : await login({ email: fields.email, password: fields.password });
       navigate(account.role === "ADMIN" ? "/admin" : "/requests");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Unable to complete your request. Please try again.");
       setFieldErrors(err.fields || {});
     } finally {
       setLoading(false);
@@ -76,13 +111,14 @@ export function AuthPage({ register = false }) {
             : "Your community is glad to have you back."}
         </p>
         <Alert>{error}</Alert>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           {register && (
             <Field
               label="Full name"
               name="fullName"
               autoComplete="name"
               required
+              maxLength={120}
               value={fields.fullName}
               onChange={update}
               error={fieldErrors.fullName}
@@ -94,6 +130,7 @@ export function AuthPage({ register = false }) {
               name="email"
               type="email"
               autoComplete="email"
+              maxLength={254}
               required
               value={fields.email}
               onChange={update}
@@ -106,7 +143,9 @@ export function AuthPage({ register = false }) {
               name="password"
               type="password"
               autoComplete={register ? "new-password" : "current-password"}
+              maxLength={72}
               required
+              showPasswordToggle
               value={fields.password}
               onChange={update}
               error={fieldErrors.password}
@@ -123,10 +162,13 @@ export function AuthPage({ register = false }) {
               name="confirmation"
               type="password"
               autoComplete="new-password"
+              maxLength={72}
               required
+              showPasswordToggle
+              passwordLabel="confirmation password"
               value={fields.confirmation}
               onChange={update}
-              error={fieldErrors.passwordMatching}
+              error={fieldErrors.confirmation}
             />
           )}
           <Button disabled={loading}>

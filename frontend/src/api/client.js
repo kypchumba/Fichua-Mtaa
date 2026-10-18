@@ -1,4 +1,64 @@
 const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+const NETWORK_ERROR =
+  "Unable to connect to the service. Please check your connection and try again.";
+
+function authPath(path) {
+  return path.split("?", 1)[0];
+}
+
+function fieldMessages(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([key, message]) => typeof key === "string" && typeof message === "string",
+    ),
+  );
+}
+
+function responseMessage(path, status, payload, fields) {
+  const endpoint = authPath(path);
+  if (endpoint === "/auth/login" && status === 401) {
+    return "Incorrect email or password. Please try again.";
+  }
+  if (endpoint === "/auth/register" && status === 409) {
+    return "An account with this email already exists. Please log in instead.";
+  }
+  if (endpoint === "/auth/register" && status === 429) {
+    return "Too many registration attempts. Please try again later.";
+  }
+  if (status === 429) {
+    return "Too many requests. Please wait a little and try again.";
+  }
+  if (status === 401) return "Please sign in to continue.";
+  if (status === 403) return "You do not have permission to perform this action.";
+  if (status >= 500) {
+    const safeMessages = new Set([
+      "Image attachments are not configured. Submit the request without an image.",
+      "Image upload returned an invalid image URL.",
+      "Image upload failed. You can retry or submit without an image.",
+    ]);
+    return safeMessages.has(payload?.message)
+      ? payload.message
+      : "The service is temporarily unavailable. Please try again later.";
+  }
+  if (status === 400 && Object.keys(fields).length > 0) {
+    return payload?.message || "Please check the highlighted fields.";
+  }
+  if (status === 404) return "The requested item could not be found.";
+  if (typeof payload?.message === "string" && payload.message.length <= 240) {
+    return payload.message;
+  }
+  return "Your request could not be completed. Please try again.";
+}
+
+async function request(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    // Browser/network exceptions can contain implementation details; keep UI feedback safe.
+    throw new Error(NETWORK_ERROR);
+  }
+}
 
 // Browser-managed cookies keep session identifiers out of JavaScript storage.
 function csrfCookie() {
@@ -20,11 +80,11 @@ export async function api(path, options = {}) {
   };
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     if (!csrfCookie())
-      await fetch(`${base}/auth/csrf`, { credentials: "include" });
+      await request(`${base}/auth/csrf`, { credentials: "include" });
     const token = csrfCookie();
     if (token) headers["X-XSRF-TOKEN"] = decodeURIComponent(token);
   }
-  const response = await fetch(`${base}${path}`, {
+  const response = await request(`${base}${path}`, {
     ...options,
     method,
     headers,
@@ -33,10 +93,9 @@ export async function api(path, options = {}) {
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(
-      data.message || `Request failed (${response.status})`,
-    );
-    error.fields = data.fields || {};
+    const fields = fieldMessages(data.fields);
+    const error = new Error(responseMessage(path, response.status, data, fields));
+    error.fields = fields;
     error.status = response.status;
     throw error;
   }

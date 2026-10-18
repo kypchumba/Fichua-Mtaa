@@ -834,6 +834,45 @@ textarea:focus-visible {
   padding: 10px 12px;
   font-size: 13px;
 }
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.password-input-wrap input {
+  padding-right: 48px;
+}
+.password-toggle {
+  position: absolute;
+  right: 7px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: #5d6e64;
+  background: transparent;
+  cursor: pointer;
+}
+.password-toggle:hover {
+  color: var(--green);
+  background: var(--pale);
+}
+.password-toggle:focus-visible {
+  outline: 3px solid #94c8a7;
+  outline-offset: 1px;
+}
+.password-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
 .field textarea,
 .internal-notes textarea {
   resize: vertical;
