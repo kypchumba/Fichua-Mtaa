@@ -1,7 +1,11 @@
 package ke.fichuamtaa.api;
 
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
@@ -12,6 +16,7 @@ import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
@@ -46,6 +51,9 @@ class SecurityConfig {
   @Bean
   SecurityFilterChain filterChain(
       HttpSecurity http,
+      RegistrationRateLimiter registrationRateLimiter,
+      TrustedProxyClientIpResolver clientIpResolver,
+      ObjectMapper objectMapper,
       @org.springframework.beans.factory.annotation.Value("${SESSION_COOKIE_SECURE:false}")
           boolean secureCookie,
       @org.springframework.beans.factory.annotation.Value("${SESSION_SAME_SITE:lax}")
@@ -74,10 +82,33 @@ class SecurityConfig {
         .exceptionHandling(
             e ->
                 e.authenticationEntryPoint(
-                    (req, res, ex) ->
-                        res.sendError(
-                            HttpServletResponse.SC_UNAUTHORIZED, "Authentication required")))
+                        (req, res, ex) ->
+                            writeApiError(
+                                objectMapper,
+                                res,
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                "Please sign in to continue."))
+                    .accessDeniedHandler(
+                        (req, res, ex) ->
+                            writeApiError(
+                                objectMapper,
+                                res,
+                                HttpServletResponse.SC_FORBIDDEN,
+                                "You do not have permission to perform this action.")))
+        // Run before CSRF and MVC validation so every registration POST consumes an attempt.
+        .addFilterBefore(
+            new RegistrationRateLimitFilter(registrationRateLimiter, clientIpResolver),
+            CsrfFilter.class)
         .build();
+  }
+
+  private static void writeApiError(
+      ObjectMapper mapper, HttpServletResponse response, int status, String message)
+      throws IOException {
+    response.setStatus(status);
+    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+    response.setContentType("application/json");
+    mapper.writeValue(response.getOutputStream(), Map.of("message", message, "fields", Map.of()));
   }
 
   @Bean

@@ -59,17 +59,26 @@ class ApiController {
   }
 
   record Register(
-      @NotBlank @Size(max = 120) String fullName,
-      @NotBlank @Email @Size(max = 254) String email,
-      @NotBlank
-          @Size(min = 10, max = 72)
+      @NotBlank(message = "Please enter your full name.")
+          @Size(max = 120, message = "Full name must be 120 characters or fewer.")
+          String fullName,
+      @NotBlank(message = "Please enter your email address.")
+          @Email(message = "Please enter a valid email address.")
+          @Size(max = 254, message = "Email address must be 254 characters or fewer.")
+          String email,
+      @NotBlank(message = "Please enter your password.")
+          @Size(min = 10, max = 72, message = "Password must be between 10 and 72 characters.")
           @Pattern(
               regexp = "(?=.*[A-Za-z])(?=.*\\d).+",
               message = "Password must contain a letter and a number")
           String password,
-      @NotBlank String confirmation) {}
+      @NotBlank(message = "Please confirm your password.") String confirmation) {}
 
-  record Login(@NotBlank @Email String email, @NotBlank String password) {}
+  record Login(
+      @NotBlank(message = "Please enter your email address.")
+          @Email(message = "Please enter a valid email address.")
+          String email,
+      @NotBlank(message = "Please enter your password.") String password) {}
 
   record CreateRequest(
       @NotBlank @Size(min = 5, max = 120) String title,
@@ -129,7 +138,8 @@ class ApiController {
     String email = input.email().trim().toLowerCase(Locale.ROOT);
     if (users.existsByEmailIgnoreCase(email))
       throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "An account with this email already exists");
+          HttpStatus.CONFLICT,
+          "An account with this email already exists. Please log in instead.");
     AppUser user =
         users.save(
             new AppUser(

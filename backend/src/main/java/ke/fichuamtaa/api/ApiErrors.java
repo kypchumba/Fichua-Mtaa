@@ -1,42 +1,109 @@
 package ke.fichuamtaa.api;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 class ApiErrors {
+  private static final String INVALID_CREDENTIALS =
+      "Incorrect email or password. Please try again.";
+
+  @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
+  ResponseEntity<Map<String, Object>> authenticationFailure(Exception ignored) {
+    return error(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  ResponseEntity<Map<String, Object>> invalid(MethodArgumentNotValidException ex) {
+  ResponseEntity<Map<String, Object>> invalid(MethodArgumentNotValidException exception) {
     Map<String, String> fields = new LinkedHashMap<>();
-    ex.getBindingResult()
-        .getFieldErrors()
-        .forEach(error -> fields.putIfAbsent(error.getField(), error.getDefaultMessage()));
+    exception.getBindingResult().getFieldErrors().forEach(fieldError -> {
+      String field = fieldError.getField();
+      String code = constraintName(fieldError.getCode());
+      String message = validationMessage(field, code);
+
+      // If a blank field also violates another constraint, show the required-field guidance.
+      if ("NotBlank".equals(code) || !fields.containsKey(field)) {
+        fields.put(field, message);
+      }
+    });
+
     return ResponseEntity.badRequest()
         .body(Map.of("message", "Please check the highlighted fields.", "fields", fields));
   }
 
-  @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
-  ResponseEntity<Map<String, String>> status(
-      org.springframework.web.server.ResponseStatusException ex) {
-    return ResponseEntity.status(ex.getStatusCode())
-        .body(
-            Map.of(
-                "message",
-                Objects.requireNonNullElse(ex.getReason(), "Request could not be completed.")));
+  @ExceptionHandler(ResponseStatusException.class)
+  ResponseEntity<Map<String, Object>> status(ResponseStatusException exception) {
+    return error(
+        HttpStatus.valueOf(exception.getStatusCode().value()),
+        Objects.requireNonNullElse(exception.getReason(), "Request could not be completed."));
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)
-  ResponseEntity<Map<String, String>> conflict(Exception ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(Map.of("message", "A record conflicts with existing data."));
+  ResponseEntity<Map<String, Object>> conflict(DataIntegrityViolationException ignored) {
+    return error(HttpStatus.CONFLICT, "A record conflicts with existing data.");
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  ResponseEntity<Map<String, Object>> unreadable(HttpMessageNotReadableException ignored) {
+    return error(HttpStatus.BAD_REQUEST, "Please check the submitted information.");
   }
 
   @ExceptionHandler(Exception.class)
-  ResponseEntity<Map<String, String>> unexpected(Exception ex) {
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(Map.of("message", "An unexpected error occurred. Please try again."));
+  ResponseEntity<Map<String, Object>> unexpected(Exception ignored) {
+    return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again.");
+  }
+
+  private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
+    return ResponseEntity.status(status)
+        .body(Map.of("message", message, "fields", Map.of()));
+  }
+
+  private String validationMessage(String field, String constraint) {
+    if ("NotBlank".equals(constraint)) {
+      return switch (field) {
+        case "fullName" -> "Please enter your full name.";
+        case "email" -> "Please enter your email address.";
+        case "password" -> "Please enter your password.";
+        case "confirmation" -> "Please confirm your password.";
+        default -> "Please complete this field.";
+      };
+    }
+
+    if ("Email".equals(constraint) && "email".equals(field)) {
+      return "Please enter a valid email address.";
+    }
+    if ("Size".equals(constraint)) {
+      return switch (field) {
+        case "fullName" -> "Full name must be 120 characters or fewer.";
+        case "email" -> "Email address must be 254 characters or fewer.";
+        case "password" -> "Password must be between 10 and 72 characters.";
+        case "title" -> "Title must be between 5 and 120 characters.";
+        case "location" -> "Location must be 180 characters or fewer.";
+        case "description" -> "Description must be between 20 and 3000 characters.";
+        case "body" -> "Note must be 2000 characters or fewer.";
+        default -> "Please check the length of this field.";
+      };
+    }
+    if ("Pattern".equals(constraint) && "password".equals(field)) {
+      return "Password must contain a letter and a number.";
+    }
+    return "Please check this value.";
+  }
+
+  private String constraintName(String code) {
+    if (code == null) return "";
+    int qualifier = code.indexOf('.');
+    return qualifier >= 0 ? code.substring(0, qualifier) : code;
   }
 }
