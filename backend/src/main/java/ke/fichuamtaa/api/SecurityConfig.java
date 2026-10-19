@@ -11,6 +11,7 @@ import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,6 +24,7 @@ import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler
 import org.springframework.web.cors.*;
 
 @Configuration
+@EnableMethodSecurity
 class SecurityConfig {
   @Bean
   PasswordEncoder passwordEncoder() {
@@ -73,6 +75,10 @@ class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/requests")
+                    .hasRole("CITIZEN")
+                    .requestMatchers(HttpMethod.POST, "/api/uploads/image")
+                    .hasRole("CITIZEN")
                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
                     .anyRequest()

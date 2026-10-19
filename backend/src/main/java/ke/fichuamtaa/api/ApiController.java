@@ -20,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
@@ -188,6 +189,7 @@ class ApiController {
   }
 
   @PostMapping("/requests")
+  @PreAuthorize("hasRole('CITIZEN')")
   @Transactional
   ResponseEntity<RequestView> create(@Valid @RequestBody CreateRequest input, Authentication auth) {
     String category = validCategory(input.category());
@@ -254,6 +256,7 @@ class ApiController {
   // Stream only the already-compressed image through the backend; size and file signature are
   // checked again here.
   @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('CITIZEN')")
   Map<String, String> uploadImage(@RequestPart("image") MultipartFile image) {
     if (cloudName.isBlank() || cloudKey.isBlank() || cloudSecret.isBlank())
       throw new ResponseStatusException(
