@@ -92,7 +92,7 @@ class ApiErrors {
       return switch (field) {
         case "fullName" -> "Full name must be 120 characters or fewer.";
         case "email" -> "Email address must be 254 characters or fewer.";
-        case "password" -> "Password must be between 10 and 72 characters.";
+        case "password" -> "Password must be between 8 and 72 characters.";
         case "title" -> "Title must be between 5 and 120 characters.";
         case "location" -> "Location must be 180 characters or fewer.";
         case "description" -> "Description must be between 20 and 3000 characters.";
@@ -101,7 +101,7 @@ class ApiErrors {
       };
     }
     if ("Pattern".equals(constraint) && "password".equals(field)) {
-      return "Password must contain a letter and a number.";
+      return "Use uppercase and lowercase letters, a number, and a special character; do not use spaces.";
     }
     return "Please check this value.";
   }

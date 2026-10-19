@@ -140,14 +140,70 @@ class AdminRequestMappingTest {
     ApiController.RequestView updated =
         controller.updateStatus(
             21L,
-            new ApiController.StatusChange(RequestStatus.IN_PROGRESS, "Crew assigned"),
+            new ApiController.StatusChange(RequestStatus.IN_PROGRESS, null),
             auth);
 
     assertEquals("IN_PROGRESS", updated.status());
     assertEquals(2, updated.history().size());
     assertEquals("PENDING", updated.history().get(1).previousStatus());
     assertEquals("IN_PROGRESS", updated.history().get(1).newStatus());
+    assertEquals(null, updated.history().get(1).note());
     assertEquals("Administrator", updated.history().get(1).changedBy());
+  }
+
+  @Test
+  void citizenRequestDetailsNeverLoadOrReturnAdministratorOnlyNotes() {
+    AppUser citizen = new AppUser("Citizen", "citizen@example.test", "hash", Role.CITIZEN);
+    citizen.id = 11L;
+    ServiceRequest request =
+        new ServiceRequest(
+            "FM-2026-ABC123",
+            citizen,
+            "Street light is out",
+            "A report description",
+            "Street Lighting",
+            "Central",
+            null);
+    request.id = 21L;
+    UserRepository users =
+        (UserRepository)
+            java.lang.reflect.Proxy.newProxyInstance(
+                UserRepository.class.getClassLoader(),
+                new Class<?>[] {UserRepository.class},
+                (proxy, method, arguments) ->
+                    "findByEmailIgnoreCase".equals(method.getName())
+                        ? Optional.of(citizen)
+                        : null);
+    RequestRepository requests =
+        (RequestRepository)
+            java.lang.reflect.Proxy.newProxyInstance(
+                RequestRepository.class.getClassLoader(),
+                new Class<?>[] {RequestRepository.class},
+                (proxy, method, arguments) ->
+                    "findByIdAndCitizenId".equals(method.getName())
+                        ? Optional.of(request)
+                        : null);
+    HistoryRepository history =
+        (HistoryRepository)
+            java.lang.reflect.Proxy.newProxyInstance(
+                HistoryRepository.class.getClassLoader(),
+                new Class<?>[] {HistoryRepository.class},
+                (proxy, method, arguments) -> List.of());
+    NoteRepository notes =
+        (NoteRepository)
+            java.lang.reflect.Proxy.newProxyInstance(
+                NoteRepository.class.getClassLoader(),
+                new Class<?>[] {NoteRepository.class},
+                (proxy, method, arguments) -> {
+                  throw new AssertionError("Citizen detail must not load internal notes.");
+                });
+    ApiController controller =
+        new ApiController(users, requests, history, notes, null, null, "", "", "");
+    var auth = UsernamePasswordAuthenticationToken.authenticated("citizen@example.test", null, List.of());
+
+    ApiController.RequestView result = controller.myRequest(21L, auth);
+
+    assertEquals(List.of(), result.internalNotes());
   }
 
   // Hibernate proxies expose entity values through overridden methods, not entity fields.

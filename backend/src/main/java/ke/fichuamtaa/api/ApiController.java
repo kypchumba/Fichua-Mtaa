@@ -68,10 +68,14 @@ class ApiController {
           @Size(max = 254, message = "Email address must be 254 characters or fewer.")
           String email,
       @NotBlank(message = "Please enter your password.")
-          @Size(min = 10, max = 72, message = "Password must be between 10 and 72 characters.")
+      @Size(
+          min = PasswordPolicy.MIN_LENGTH,
+          max = PasswordPolicy.MAX_LENGTH,
+          message = "Password must be between 8 and 72 characters.")
           @Pattern(
-              regexp = "(?=.*[A-Za-z])(?=.*\\d).+",
-              message = "Password must contain a letter and a number")
+              regexp = PasswordPolicy.REGEX,
+              message =
+                  "Use uppercase and lowercase letters, a number, and a special character; do not use spaces.")
           String password,
       @NotBlank(message = "Please confirm your password.") String confirmation) {}
 
