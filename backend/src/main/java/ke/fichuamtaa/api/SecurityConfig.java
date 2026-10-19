@@ -3,6 +3,7 @@ package ke.fichuamtaa.api;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -125,9 +126,18 @@ class SecurityConfig {
 
   @Bean
   CorsConfigurationSource corsConfigurationSource(
-      @Value("${app.cors.allowed-origin}") String origin) {
+      @Value("${app.cors.allowed-origins}") String configuredOrigins) {
+    List<String> origins = Arrays.stream(configuredOrigins.split(","))
+        .map(String::trim)
+        .filter(origin -> !origin.isEmpty())
+        .toList();
+    if (origins.isEmpty() || origins.stream().anyMatch(origin -> origin.contains("*"))) {
+      throw new IllegalArgumentException(
+          "Configure one or more explicit CORS origins; wildcard origins cannot use credentials.");
+    }
+
     var cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(List.of(origin));
+    cfg.setAllowedOrigins(origins);
     cfg.setAllowCredentials(true);
     cfg.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN"));
