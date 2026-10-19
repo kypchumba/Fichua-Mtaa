@@ -502,7 +502,8 @@ class ApiController {
   }
 
   private UserView userView(AppUser u) {
-    return new UserView(u.id, u.fullName, u.email, u.role.name());
+    // Accessors initialize lazy proxies; direct field reads bypass Hibernate's proxy behavior.
+    return new UserView(u.getId(), u.getFullName(), u.getEmail(), u.getRole().name());
   }
 
   private RequestView requestView(ServiceRequest r, boolean admin) {
@@ -514,13 +515,13 @@ class ApiController {
                         x.previousStatus == null ? null : x.previousStatus.name(),
                         x.newStatus.name(),
                         x.changedAt,
-                        x.changedBy == null ? null : x.changedBy.fullName,
+                        x.changedBy == null ? null : x.changedBy.getFullName(),
                         admin ? x.note : null))
             .toList();
     var n =
         admin
             ? notes.findByRequestIdOrderByCreatedAtAsc(r.id).stream()
-                .map(x -> new NoteView(x.id, x.body, x.createdAt, x.admin.fullName))
+                .map(x -> new NoteView(x.id, x.body, x.createdAt, x.admin.getFullName()))
                 .toList()
             : List.<NoteView>of();
     return new RequestView(

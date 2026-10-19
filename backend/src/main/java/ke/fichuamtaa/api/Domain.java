@@ -50,6 +50,23 @@ class AppUser {
     this.passwordHash = passwordHash;
     this.role = role;
   }
+
+  // Public accessors allow Hibernate to initialize lazy AppUser proxies safely.
+  public Long getId() {
+    return id;
+  }
+
+  public String getFullName() {
+    return fullName;
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public Role getRole() {
+    return role;
+  }
 }
 
 @Entity

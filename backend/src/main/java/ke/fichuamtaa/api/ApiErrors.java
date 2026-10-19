@@ -13,9 +13,12 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 class ApiErrors {
+  private static final Logger logger = LoggerFactory.getLogger(ApiErrors.class);
   private static final String INVALID_CREDENTIALS =
       "Incorrect email or password. Please try again.";
 
@@ -60,7 +63,9 @@ class ApiErrors {
   }
 
   @ExceptionHandler(Exception.class)
-  ResponseEntity<Map<String, Object>> unexpected(Exception ignored) {
+  ResponseEntity<Map<String, Object>> unexpected(Exception exception) {
+    // Keep internal details in server logs; never return stack traces to API clients.
+    logger.error("Unhandled API exception", exception);
     return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again.");
   }
 
