@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { api } from "../api/client";
 import { compressImage, MAX_IMAGE_BYTES } from "../api/image";
 import {
@@ -11,6 +16,7 @@ import {
   StatusBadge,
 } from "../components/UI";
 import { BackLink } from "../components/BackLink";
+import { ImageLightbox } from "../components/ImageLightbox";
 
 const categories = [
   "Roads and Drainage",
@@ -356,8 +362,10 @@ export function MyRequests() {
 export function RequestDetails({ admin = false }) {
   const { id } = useParams();
   const [item, setItem] = useState(null);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const closeImagePreview = useCallback(() => setImagePreviewOpen(false), []);
   useEffect(() => {
     api(`${admin ? "/admin" : ""}/requests/${id}`)
       .then(setItem)
@@ -394,11 +402,19 @@ export function RequestDetails({ admin = false }) {
           <h2>Request details</h2>
           <p className="detail-description">{item.description}</p>
           {item.attachmentUrl && (
-            <img
-              className="attached-image"
-              src={item.attachmentUrl}
-              alt="Citizen attached evidence"
-            />
+            <button
+              className="attached-image-button"
+              type="button"
+              aria-label="Enlarge citizen attached evidence"
+              onClick={() => setImagePreviewOpen(true)}
+            >
+              <img
+                className="attached-image"
+                src={item.attachmentUrl}
+                alt="Citizen attached evidence"
+                loading="lazy"
+              />
+            </button>
           )}
           <dl className="detail-meta">
             <div>
@@ -451,6 +467,13 @@ export function RequestDetails({ admin = false }) {
           </article>
         )}
       </div>
+      {imagePreviewOpen && item.attachmentUrl && (
+        <ImageLightbox
+          src={item.attachmentUrl}
+          alt="Enlarged citizen attached evidence"
+          onClose={closeImagePreview}
+        />
+      )}
     </section>
   );
 }
@@ -459,12 +482,15 @@ function AdminControls({ item, onChange }) {
   const [note, setNote] = useState("");
   const [status, setStatus] = useState(item.status);
   const [category, setCategory] = useState(item.category);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [savingNote, setSavingNote] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingCategory, setUpdatingCategory] = useState(false);
+  const noteSaving = useRef(false);
   const [confirmingResolution, setConfirmingResolution] = useState(false);
   async function updateStatus() {
-    setBusy(true);
-    setMessage("");
+    setUpdatingStatus(true);
+    setFeedback(null);
     try {
       onChange(
         await api(`/admin/requests/${item.id}/status`, {
@@ -473,45 +499,47 @@ function AdminControls({ item, onChange }) {
         }),
       );
       setConfirmingResolution(false);
-      setMessage("Request status updated.");
+      setFeedback({ message: "Request status updated.", error: false });
     } catch (e) {
-      setMessage(e.message);
+      setFeedback({ message: e.message, error: true });
     } finally {
-      setBusy(false);
+      setUpdatingStatus(false);
     }
   }
   async function saveNote(e) {
     e.preventDefault();
-    setBusy(true);
-    setMessage("");
+    if (!note.trim()) {
+      setFeedback({
+        message: "Enter an internal note before choosing Save note.",
+        error: true,
+      });
+      return;
+    }
+    if (noteSaving.current) return;
+    noteSaving.current = true;
+    setSavingNote(true);
+    setFeedback(null);
     try {
-      await api(`/admin/requests/${item.id}/notes`, {
+      const saved = await api(`/admin/requests/${item.id}/notes`, {
         method: "POST",
-        body: JSON.stringify({ body: note }),
+        body: JSON.stringify({ body: note.trim() }),
       });
-      onChange({
-        ...item,
-        internalNotes: [
-          ...item.internalNotes,
-          {
-            body: note,
-            createdAt: new Date().toISOString(),
-            admin: "You",
-            id: Date.now(),
-          },
-        ],
-      });
+      onChange((current) => ({
+        ...current,
+        internalNotes: [...current.internalNotes, saved],
+      }));
       setNote("");
-      setMessage("Internal note saved.");
+      setFeedback({ message: "Internal note saved.", error: false });
     } catch (e) {
-      setMessage(e.message);
+      setFeedback({ message: e.message, error: true });
     } finally {
-      setBusy(false);
+      noteSaving.current = false;
+      setSavingNote(false);
     }
   }
   async function updateCategory() {
-    setBusy(true);
-    setMessage("");
+    setUpdatingCategory(true);
+    setFeedback(null);
     try {
       onChange(
         await api(`/admin/requests/${item.id}/category`, {
@@ -519,67 +547,72 @@ function AdminControls({ item, onChange }) {
           body: JSON.stringify({ category }),
         }),
       );
-      setMessage("Service category updated.");
+      setFeedback({ message: "Service category updated.", error: false });
     } catch (e) {
-      setMessage(e.message);
+      setFeedback({ message: e.message, error: true });
     } finally {
-      setBusy(false);
+      setUpdatingCategory(false);
     }
   }
   return (
     <>
       <h3>Manage request</h3>
-      {item.status !== "RESOLVED" && (
+      <section
+        className="request-management-controls"
+        aria-label="Request updates"
+      >
+        {item.status !== "RESOLVED" && (
+          <div className="status-control">
+            <label htmlFor="nextStatus">Change status</label>
+            <select
+              id="nextStatus"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value={item.status} disabled>
+                {item.status.replace("_", " ")}
+              </option>
+              {item.status === "PENDING" && (
+                <option value="IN_PROGRESS">In progress</option>
+              )}
+              {item.status === "IN_PROGRESS" && (
+                <option value="RESOLVED">Resolved</option>
+              )}
+            </select>
+            <Button
+              type="button"
+              disabled={updatingStatus || status === item.status}
+              onClick={() =>
+                status === "RESOLVED"
+                  ? setConfirmingResolution(true)
+                  : updateStatus()
+              }
+            >
+              {updatingStatus ? "Updating…" : "Update status"}
+            </Button>
+          </div>
+        )}
         <div className="status-control">
-          <label htmlFor="nextStatus">Change status</label>
+          <label htmlFor="requestCategory">Assign service</label>
           <select
-            id="nextStatus"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            id="requestCategory"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
           >
-            <option value={item.status} disabled>
-              {item.status.replace("_", " ")}
-            </option>
-            {item.status === "PENDING" && (
-              <option value="IN_PROGRESS">In progress</option>
-            )}
-            {item.status === "IN_PROGRESS" && (
-              <option value="RESOLVED">Resolved</option>
-            )}
+            {categories.map((service) => (
+              <option key={service}>{service}</option>
+            ))}
           </select>
           <Button
             type="button"
-            disabled={busy || status === item.status}
-            onClick={() =>
-              status === "RESOLVED"
-                ? setConfirmingResolution(true)
-                : updateStatus()
-            }
+            variant="outline"
+            disabled={updatingCategory || category === item.category}
+            onClick={updateCategory}
           >
-            Update status
+            {updatingCategory ? "Updating…" : "Update service"}
           </Button>
         </div>
-      )}
-      <div className="status-control">
-        <label htmlFor="requestCategory">Assign service</label>
-        <select
-          id="requestCategory"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          {categories.map((service) => (
-            <option key={service}>{service}</option>
-          ))}
-        </select>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy || category === item.category}
-          onClick={updateCategory}
-        >
-          Update service
-        </Button>
-      </div>
+      </section>
       {confirmingResolution && (
         <div
           className="confirm-panel"
@@ -592,13 +625,17 @@ function AdminControls({ item, onChange }) {
             to see.
           </p>
           <div>
-            <Button type="button" disabled={busy} onClick={updateStatus}>
+            <Button
+              type="button"
+              disabled={updatingStatus}
+              onClick={updateStatus}
+            >
               Confirm resolution
             </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={busy}
+              disabled={updatingStatus}
               onClick={() => setConfirmingResolution(false)}
             >
               Keep in progress
@@ -606,21 +643,31 @@ function AdminControls({ item, onChange }) {
           </div>
         </div>
       )}
-      <form onSubmit={saveNote}>
-        <label htmlFor="internalNote">Add an internal note</label>
+      <form className="internal-note-form" onSubmit={saveNote}>
+        <label htmlFor="internalNote">
+          Add an internal note <span className="optional">(optional)</span>
+        </label>
         <textarea
           id="internalNote"
           rows="3"
           maxLength="2000"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          required
+          aria-describedby="internal-note-help"
         />
-        <Button disabled={busy || !note.trim()}>Save note</Button>
+        <small id="internal-note-help">
+          Notes are private to administrators and separate from request updates.
+        </small>
+        <Button disabled={savingNote}>
+          {savingNote ? "Saving note…" : "Save note"}
+        </Button>
       </form>
-      {message && (
-        <p className="inline-feedback" role="status">
-          {message}
+      {feedback && (
+        <p
+          className={`inline-feedback${feedback.error ? " is-error" : ""}`}
+          role="status"
+        >
+          {feedback.message}
         </p>
       )}
     </>

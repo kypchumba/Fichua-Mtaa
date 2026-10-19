@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AuthPage } from "./Auth";
@@ -66,23 +72,66 @@ describe("authentication forms", () => {
 
     expect(password).toHaveAttribute("type", "password");
     expect(confirmation).toHaveAttribute("type", "password");
-    fireEvent.click(screen.getByRole("button", { name: "Show confirmation password" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show confirmation password" }),
+    );
 
     expect(confirmation).toHaveAttribute("type", "text");
     expect(password).toHaveAttribute("type", "password");
+  });
+
+  it("shows which registration password requirements are met as the user types", () => {
+    renderAuth(true);
+    fill(/^Password/, "weak pass");
+    expect(
+      screen.getByText("At least one uppercase letter").closest("li"),
+    ).not.toHaveClass("is-met");
+    expect(
+      screen.getByText("No spaces or other whitespace").closest("li"),
+    ).not.toHaveClass("is-met");
+
+    fill(/^Password/, "Abcdef1!");
+    for (const label of [
+      "At least 8 characters",
+      "At least one uppercase letter",
+      "At least one lowercase letter",
+      "At least one number",
+      "At least one special character",
+      "No spaces or other whitespace",
+    ]) {
+      expect(screen.getByText(label).closest("li")).toHaveClass("is-met");
+    }
+  });
+
+  it("does not submit registration when a password misses a required character type", () => {
+    renderAuth(true);
+    fill(/^Full name/, "Amina Citizen");
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "lowercase1!");
+    fill(/^Confirm password/, "lowercase1!");
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(
+      screen.getByText("Password must meet all the requirements shown below."),
+    ).toBeInTheDocument();
+    expect(authMocks.register).not.toHaveBeenCalled();
   });
 
   it("shows field-specific required errors without sending an empty login", () => {
     renderAuth();
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
-    expect(screen.getByText("Please enter your email address.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Please enter your email address."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Please enter your password.")).toBeInTheDocument();
     expect(authMocks.login).not.toHaveBeenCalled();
   });
 
   it("shows a safe generic credential error after a failed login", async () => {
-    authMocks.login.mockRejectedValue(new Error("Incorrect email or password. Please try again."));
+    authMocks.login.mockRejectedValue(
+      new Error("Incorrect email or password. Please try again."),
+    );
     renderAuth();
     fill(/^Email address/, "citizen@example.com");
     fill(/^Password/, "incorrect-value");
@@ -95,7 +144,9 @@ describe("authentication forms", () => {
 
   it("shows the duplicate-email registration message", async () => {
     authMocks.register.mockRejectedValue(
-      new Error("An account with this email already exists. Please log in instead."),
+      new Error(
+        "An account with this email already exists. Please log in instead.",
+      ),
     );
     renderAuth(true);
     fill(/^Full name/, "Amina Citizen");
@@ -145,7 +196,9 @@ describe("authentication forms", () => {
     fill(/^Password/, "admin-password");
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
-    expect(await screen.findByText("Administrator dashboard")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Administrator dashboard"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Citizen dashboard")).toBeNull();
   });
 
@@ -165,10 +218,7 @@ describe("authentication forms", () => {
       >
         <Routes>
           <Route path="/login" element={<AuthPage />} />
-          <Route
-            path="/requests/new"
-            element={<RequestedForm />}
-          />
+          <Route path="/requests/new" element={<RequestedForm />} />
           <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
         </Routes>
       </MemoryRouter>,
@@ -215,7 +265,9 @@ describe("authentication forms", () => {
     fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     expect(
-      await screen.findByText("Report form ?category=Water%20Supply from /services"),
+      await screen.findByText(
+        "Report form ?category=Water%20Supply from /services",
+      ),
     ).toBeInTheDocument();
   });
 });

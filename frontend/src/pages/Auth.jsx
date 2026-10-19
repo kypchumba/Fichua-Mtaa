@@ -5,6 +5,26 @@ import { Alert, Button, Field } from "../components/UI";
 import { postLoginPath } from "../auth/roles";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRequirements = [
+  { label: "At least 8 characters", test: (value) => value.length >= 8 },
+  {
+    label: "At least one uppercase letter",
+    test: (value) => /[A-Z]/.test(value),
+  },
+  {
+    label: "At least one lowercase letter",
+    test: (value) => /[a-z]/.test(value),
+  },
+  { label: "At least one number", test: (value) => /\d/.test(value) },
+  {
+    label: "At least one special character",
+    test: (value) => /[^A-Za-z0-9\s]/.test(value),
+  },
+  {
+    label: "No spaces or other whitespace",
+    test: (value) => !/\s/.test(value),
+  },
+];
 
 function validateFields(fields, register) {
   const errors = {};
@@ -21,12 +41,15 @@ function validateFields(fields, register) {
 
   if (!fields.password) {
     errors.password = "Please enter your password.";
-  } else if (register && fields.password.length < 10) {
-    errors.password = "Password must be at least 10 characters.";
+  } else if (register && fields.password.length < 8) {
+    errors.password = "Password must be at least 8 characters.";
   } else if (register && fields.password.length > 72) {
     errors.password = "Password must be 72 characters or fewer.";
-  } else if (register && !/(?=.*[A-Za-z])(?=.*\d)/.test(fields.password)) {
-    errors.password = "Password must contain a letter and a number.";
+  } else if (
+    register &&
+    passwordRequirements.some(({ test }) => !test(fields.password))
+  ) {
+    errors.password = "Password must meet all the requirements shown below.";
   }
 
   if (register && !fields.confirmation) {
@@ -86,7 +109,9 @@ export function AuthPage({ register = false }) {
         state: { from: location.state?.from },
       });
     } catch (err) {
-      setError(err.message || "Unable to complete your request. Please try again.");
+      setError(
+        err.message || "Unable to complete your request. Please try again.",
+      );
       setFieldErrors(err.fields || {});
     } finally {
       setLoading(false);
@@ -165,12 +190,30 @@ export function AuthPage({ register = false }) {
               onChange={update}
               error={fieldErrors.password}
               hint={
-                register
-                  ? "At least 10 characters, with a letter and a number."
-                  : undefined
+                register ? "Choose a password that meets each rule." : undefined
               }
             />
           }
+          {register && (
+            <ul
+              className="password-requirements"
+              aria-label="Registration security checklist"
+              aria-live="polite"
+            >
+              {passwordRequirements.map(({ label, test }) => {
+                const met = test(fields.password);
+                return (
+                  <li className={met ? "is-met" : ""} key={label}>
+                    <span aria-hidden="true">{met ? "✓" : "○"}</span>
+                    {label}
+                    <span className="requirement-state">
+                      {met ? "Met" : "Needed"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           {register && (
             <Field
               label="Confirm password"
@@ -193,10 +236,7 @@ export function AuthPage({ register = false }) {
         </form>
         <p className="auth-switch">
           {register ? "Already have an account?" : "New to Fichua Mtaa?"}{" "}
-          <Link
-            to={register ? "/login" : "/register"}
-            state={location.state}
-          >
+          <Link to={register ? "/login" : "/register"} state={location.state}>
             {register ? "Sign in" : "Create an account"}
           </Link>
         </p>

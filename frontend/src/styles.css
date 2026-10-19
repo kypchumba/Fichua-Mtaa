@@ -901,6 +901,37 @@ textarea:focus-visible {
   stroke-linejoin: round;
   stroke-width: 1.7;
 }
+.password-requirements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 16px;
+  padding: 0;
+  margin: -5px 0 8px;
+  list-style: none;
+  color: #6d7a71;
+  font-size: 11px;
+}
+.password-requirements li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.password-requirements li > span:first-child {
+  width: 15px;
+  color: #9a6a39;
+}
+.password-requirements li.is-met {
+  color: #2f704b;
+}
+.password-requirements li.is-met > span:first-child {
+  color: #2f704b;
+  font-weight: 700;
+}
+.requirement-state {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+}
 .field textarea,
 .internal-notes textarea {
   resize: vertical;
@@ -1230,6 +1261,65 @@ textarea:focus-visible {
   object-fit: contain;
   margin: 12px 0;
 }
+.attached-image-button {
+  display: inline-grid;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.attached-image-button:focus-visible {
+  outline: 3px solid #94c8a7;
+  outline-offset: 3px;
+}
+.image-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(14 25 20 / 88%);
+}
+.image-lightbox {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 1440px);
+  max-height: 100%;
+}
+.image-lightbox-image {
+  display: block;
+  max-width: min(94vw, 1400px);
+  max-height: 90vh;
+  max-height: 90dvh;
+  object-fit: contain;
+}
+.image-lightbox-close {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(255 255 255 / 48%);
+  border-radius: 50%;
+  color: #fff;
+  background: rgb(15 26 21 / 75%);
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+.image-lightbox-close:hover {
+  background: #245b42;
+}
+.image-lightbox-close:focus-visible {
+  outline: 3px solid #b9e6c6;
+  outline-offset: 3px;
+}
 .timeline {
   list-style: none;
   padding: 0;
@@ -1310,13 +1400,27 @@ textarea:focus-visible {
 .internal-notes form {
   display: grid;
   gap: 11px;
-  max-width: 500px;
+  max-width: 620px;
 }
 .internal-notes form .button {
   justify-self: start;
 }
+.internal-note-form {
+  border-top: 1px solid var(--line);
+  margin-top: 25px;
+  padding-top: 20px;
+}
+.internal-note-form > small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.request-management-controls {
+  display: grid;
+  gap: 4px;
+}
 .status-control {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(100px, 140px) minmax(140px, 1fr) auto;
   align-items: center;
   gap: 10px;
   margin: 12px 0 18px;
@@ -1337,6 +1441,9 @@ textarea:focus-visible {
 .inline-feedback {
   font-size: 11px;
   color: #32734d;
+}
+.inline-feedback.is-error {
+  color: #a2342e;
 }
 .admin-page {
   padding-top: 45px;
@@ -1946,6 +2053,13 @@ td a:not(.table-view):hover {
     padding: 15px;
   }
   .status-control {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .status-control select {
+    width: 100%;
+  }
+  .password-requirements {
+    grid-template-columns: 1fr;
   }
 }
