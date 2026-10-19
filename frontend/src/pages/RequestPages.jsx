@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { compressImage, MAX_IMAGE_BYTES } from "../api/image";
 import {
@@ -10,6 +10,7 @@ import {
   Spinner,
   StatusBadge,
 } from "../components/UI";
+import { BackLink } from "../components/BackLink";
 
 const categories = [
   "Roads and Drainage",
@@ -28,9 +29,11 @@ const date = (value) =>
 
 export function RequestCreate() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialCategory = searchParams.get("category");
   const [values, setValues] = useState({
     title: "",
-    category: "",
+    category: categories.includes(initialCategory) ? initialCategory : "",
     location: "",
     description: "",
   });
@@ -114,9 +117,7 @@ export function RequestCreate() {
   }
   return (
     <section className="form-page">
-      <Link className="back-link" to="/requests">
-        ← Back to my requests
-      </Link>
+      <BackLink fallbackTo="/requests">← Back</BackLink>
       <span className="eyebrow">SERVICE REQUEST</span>
       <h1 className="page-title">Tell us what’s happening</h1>
       <p className="page-intro">
@@ -141,7 +142,14 @@ export function RequestCreate() {
             as="select"
             required
             value={values.category}
-            onChange={(e) => setValues({ ...values, category: e.target.value })}
+            onChange={(e) => {
+              const category = e.target.value;
+              setValues((current) => ({ ...current, category }));
+              const nextParams = new URLSearchParams(searchParams);
+              if (category) nextParams.set("category", category);
+              else nextParams.delete("category");
+              setSearchParams(nextParams, { replace: true });
+            }}
           >
             <option value="">Choose a category</option>
             {categories.map((c) => (
@@ -361,14 +369,16 @@ export function RequestDetails({ admin = false }) {
     return (
       <section className="page-wrap">
         <Alert>{error}</Alert>
-        <Link to={admin ? "/admin" : "/requests"}>Return to requests</Link>
+        <BackLink fallbackTo={admin ? "/admin" : "/requests"}>
+          Return to requests
+        </BackLink>
       </section>
     );
   return (
     <section className="page-wrap detail-page">
-      <Link className="back-link" to={admin ? "/admin" : "/requests"}>
+      <BackLink fallbackTo={admin ? "/admin" : "/requests"}>
         ← Back to {admin ? "all requests" : "my requests"}
-      </Link>
+      </BackLink>
       <div className="detail-heading">
         <div>
           <span className="eyebrow">REQUEST {item.referenceNumber}</span>

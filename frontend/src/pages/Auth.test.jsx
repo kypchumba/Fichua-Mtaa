@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AuthPage } from "./Auth";
 
 const authMocks = vi.hoisted(() => ({
@@ -27,6 +27,15 @@ function renderAuth(register = false) {
 
 function fill(label, value) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
+}
+
+function RequestedForm() {
+  const location = useLocation();
+  return (
+    <p>
+      Report form {location.search} from {location.state?.from}
+    </p>
+  );
 }
 
 describe("authentication forms", () => {
@@ -100,5 +109,113 @@ describe("authentication forms", () => {
         "An account with this email already exists. Please log in instead.",
       ),
     );
+  });
+
+  it("routes a successful citizen login to the citizen dashboard", async () => {
+    authMocks.login.mockResolvedValue({ role: "CITIZEN" });
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
+          <Route path="/admin" element={<p>Administrator dashboard</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "citizen-password");
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(await screen.findByText("Citizen dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Administrator dashboard")).toBeNull();
+  });
+
+  it("routes a successful administrator login to administration", async () => {
+    authMocks.login.mockResolvedValue({ role: "ADMIN" });
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
+          <Route path="/admin" element={<p>Administrator dashboard</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fill(/^Email address/, "admin@example.com");
+    fill(/^Password/, "admin-password");
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(await screen.findByText("Administrator dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Citizen dashboard")).toBeNull();
+  });
+
+  it("returns a citizen to the selected service form after sign-in", async () => {
+    authMocks.login.mockResolvedValue({ role: "CITIZEN" });
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/login",
+            state: {
+              returnTo: "/requests/new?category=Roads%20and%20Drainage",
+              from: "/services",
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
+          <Route
+            path="/requests/new"
+            element={<RequestedForm />}
+          />
+          <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "citizen-password");
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(
+      await screen.findByText(
+        "Report form ?category=Roads%20and%20Drainage from /services",
+      ),
+    ).toBeInTheDocument();
+    expect(authMocks.login).toHaveBeenCalledOnce();
+  });
+
+  it("preserves the selected service when a visitor creates an account", async () => {
+    authMocks.register.mockResolvedValue({ role: "CITIZEN" });
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/login",
+            state: {
+              returnTo: "/requests/new?category=Water%20Supply",
+              from: "/services",
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/register" element={<AuthPage register />} />
+          <Route path="/requests/new" element={<RequestedForm />} />
+          <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
+    fill(/^Full name/, "Amina Citizen");
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "Community-Access-2026");
+    fill(/^Confirm password/, "Community-Access-2026");
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(
+      await screen.findByText("Report form ?category=Water%20Supply from /services"),
+    ).toBeInTheDocument();
   });
 });

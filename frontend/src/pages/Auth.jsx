@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Alert, Button, Field } from "../components/UI";
+import { postLoginPath } from "../auth/roles";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,6 +41,7 @@ function validateFields(fields, register) {
 export function AuthPage({ register = false }) {
   const { user, login, register: createAccount } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -49,10 +51,15 @@ export function AuthPage({ register = false }) {
     password: "",
     confirmation: "",
   });
-  if (user)
+  if (user) {
     return (
-      <Navigate to={user.role === "ADMIN" ? "/admin" : "/requests"} replace />
+      <Navigate
+        to={postLoginPath(user.role, location.state?.returnTo)}
+        state={{ from: location.state?.from }}
+        replace
+      />
     );
+  }
   const update = (e) =>
     setFields((current) => ({ ...current, [e.target.name]: e.target.value }));
   async function submit(e) {
@@ -74,7 +81,10 @@ export function AuthPage({ register = false }) {
             confirmation: fields.confirmation,
           })
         : await login({ email: fields.email, password: fields.password });
-      navigate(account.role === "ADMIN" ? "/admin" : "/requests");
+      navigate(postLoginPath(account.role, location.state?.returnTo), {
+        replace: true,
+        state: { from: location.state?.from },
+      });
     } catch (err) {
       setError(err.message || "Unable to complete your request. Please try again.");
       setFieldErrors(err.fields || {});
@@ -110,7 +120,12 @@ export function AuthPage({ register = false }) {
             ? "It only takes a minute to get started."
             : "Your community is glad to have you back."}
         </p>
-        <Alert>{error}</Alert>
+        <Alert>
+          {error ||
+            (location.state?.sessionExpired
+              ? "Your session expired. Please sign in again."
+              : "")}
+        </Alert>
         <form onSubmit={submit} noValidate>
           {register && (
             <Field
@@ -178,7 +193,10 @@ export function AuthPage({ register = false }) {
         </form>
         <p className="auth-switch">
           {register ? "Already have an account?" : "New to Fichua Mtaa?"}{" "}
-          <Link to={register ? "/login" : "/register"}>
+          <Link
+            to={register ? "/login" : "/register"}
+            state={location.state}
+          >
             {register ? "Sign in" : "Create an account"}
           </Link>
         </p>

@@ -115,4 +115,24 @@ describe("API upload errors", () => {
       "Unable to connect to the service. Please check your connection and try again.",
     );
   });
+
+  it("signals an expired authenticated session on protected API responses", async () => {
+    const expired = vi.fn();
+    window.addEventListener("fichua:session-expired", expired);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ message: "Unauthenticated" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(api("/admin/analytics")).rejects.toThrow(
+      "Please sign in to continue.",
+    );
+    expect(expired).toHaveBeenCalledTimes(1);
+    window.removeEventListener("fichua:session-expired", expired);
+  });
 });

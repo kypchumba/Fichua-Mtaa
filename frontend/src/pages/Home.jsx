@@ -15,12 +15,12 @@ export default function Home() {
         <div className="hero-inner">
           <div className="hero-copy">
             <span className="eyebrow">
-              <span className="live-dot" /> YOUR VOICE, YOUR COMMUNITY
+              <span className="live-dot" /> YOU ASK WE DELIVER.
             </span>
             <h1>
-              Let’s make our
+              Sauti yako,
               <br />
-              <em>neighbourhood</em> better.
+              <em>Jukumu letu.</em>
             </h1>
             <p>
               Report a local service issue, follow its progress, and help build
@@ -29,9 +29,17 @@ export default function Home() {
             <div className="hero-actions">
               <Link
                 className="button button-light"
-                to={user ? "/requests/new" : "/register"}
+                to={
+                  user?.role === "ADMIN"
+                    ? "/admin"
+                    : user?.role === "CITIZEN"
+                      ? "/requests/new"
+                      : "/register"
+                }
               >
-                Report an issue <span aria-hidden="true">→</span>
+                {user?.role === "ADMIN"
+                  ? "Open dashboard"
+                  : "Report an issue"} <span aria-hidden="true">→</span>
               </Link>
               <Link className="hero-link" to="/services">
                 Explore services
@@ -136,9 +144,18 @@ export default function Home() {
         </div>
         <Link
           className="button button-primary"
-          to={user ? "/requests/new" : "/register"}
+          to={
+            user?.role === "ADMIN"
+              ? "/admin"
+              : user?.role === "CITIZEN"
+                ? "/requests/new"
+                : "/register"
+          }
         >
-          Submit a request <span>→</span>
+          {user?.role === "ADMIN"
+            ? "Open administration"
+            : "Submit a request"}{" "}
+          <span>→</span>
         </Link>
       </section>
     </>

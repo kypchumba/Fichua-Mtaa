@@ -1,11 +1,26 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function Layout() {
-  const { user, logout } = useAuth();
+  const { user, checking, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function signOut() {
+    await logout();
+    // Leave protected routes after clearing the server-managed session.
+    navigate("/", { replace: true });
+  }
+
   return (
     <>
-      <header className="site-header">
+      <header
+        className={[
+          "site-header",
+          user?.role === "ADMIN" ? "site-header-admin" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className="header-inner">
           <Link className="brand" to="/">
             <span className="brand-mark">FM</span>
@@ -15,26 +30,33 @@ export function Layout() {
             </span>
           </Link>
           <nav aria-label="Main navigation">
+            <NavLink to="/">Home</NavLink>
             <NavLink to="/services">Services</NavLink>
-            <NavLink to="/requests/new">Submit request</NavLink>
-            <NavLink to="/requests">My requests</NavLink>
-            {user && (
-              <>
-                {user.role === "ADMIN" && (
-                  <NavLink to="/admin">Administration</NavLink>
-                )}
-              </>
-            )}
-            {user ? (
-              <button className="nav-button" onClick={() => logout()}>
-                Sign out
-              </button>
-            ) : (
+            {!checking && !user && (
               <>
                 <NavLink to="/login">Sign in</NavLink>
                 <NavLink className="nav-signin" to="/register">
                   Register
                 </NavLink>
+              </>
+            )}
+            {!checking && user?.role === "CITIZEN" && (
+              <>
+                <NavLink to="/dashboard">Dashboard</NavLink>
+                <NavLink to="/requests/new">Submit request</NavLink>
+                <NavLink to="/requests">My requests</NavLink>
+                <NavLink to="/profile">Profile</NavLink>
+                <button className="nav-button" onClick={signOut}>
+                  Sign out
+                </button>
+              </>
+            )}
+            {!checking && user?.role === "ADMIN" && (
+              <>
+                <NavLink to="/admin">Administration</NavLink>
+                <button className="nav-button" onClick={signOut}>
+                  Sign out
+                </button>
               </>
             )}
           </nav>

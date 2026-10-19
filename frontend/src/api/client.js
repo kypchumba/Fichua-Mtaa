@@ -93,6 +93,13 @@ export async function api(path, options = {}) {
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      !["/auth/login", "/auth/register", "/auth/me"].includes(authPath(path))
+    ) {
+      // Let the auth provider clear stale user state and send protected pages to sign-in.
+      window.dispatchEvent(new CustomEvent("fichua:session-expired"));
+    }
     const fields = fieldMessages(data.fields);
     const error = new Error(responseMessage(path, response.status, data, fields));
     error.fields = fields;
