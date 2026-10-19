@@ -142,6 +142,8 @@ class AuthErrorTest {
         null,
         encoder,
         authManager,
+        null,
+        new ActiveSessionRegistry(),
         "",
         "",
         "");

@@ -206,6 +206,33 @@ class AdminNote {
   }
 }
 
+// Durable outbox rows let Cloudinary cleanup retry after the database deletion commits.
+@Entity
+@Table(name = "cloudinary_cleanup_task")
+class CloudinaryCleanupTask {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  Long id;
+
+  @Column(name = "public_id", nullable = false, unique = true, length = 255)
+  String publicId;
+
+  @Column(name = "attempt_count", nullable = false)
+  int attemptCount;
+
+  @Column(name = "next_attempt_at", nullable = false)
+  Instant nextAttemptAt = Instant.now();
+
+  @Column(name = "created_at", nullable = false)
+  Instant createdAt = Instant.now();
+
+  protected CloudinaryCleanupTask() {}
+
+  CloudinaryCleanupTask(String publicId) {
+    this.publicId = publicId;
+  }
+}
+
 interface UserRepository
     extends org.springframework.data.jpa.repository.JpaRepository<AppUser, Long> {
   Optional<AppUser> findByEmailIgnoreCase(String email);
@@ -219,6 +246,10 @@ interface RequestRepository
   List<ServiceRequest> findByCitizenIdOrderByCreatedAtDesc(Long citizenId);
 
   Optional<ServiceRequest> findByIdAndCitizenId(Long id, Long citizenId);
+
+  @org.springframework.data.jpa.repository.Query(
+      "select r.attachmentUrl, r.citizen.id from ServiceRequest r where r.attachmentUrl is not null")
+  List<Object[]> findAttachmentReferences();
 
   @org.springframework.data.jpa.repository.Query(
       "select r.status, count(r) from ServiceRequest r group by r.status")
@@ -237,4 +268,12 @@ interface HistoryRepository
 interface NoteRepository
     extends org.springframework.data.jpa.repository.JpaRepository<AdminNote, Long> {
   List<AdminNote> findByRequestIdOrderByCreatedAtAsc(Long requestId);
+}
+
+interface CloudinaryCleanupRepository
+    extends org.springframework.data.jpa.repository.JpaRepository<CloudinaryCleanupTask, Long> {
+  List<CloudinaryCleanupTask> findTop25ByNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
+      Instant now);
+
+  boolean existsByPublicId(String publicId);
 }

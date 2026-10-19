@@ -61,6 +61,7 @@ describe("role-specific navigation", () => {
     );
     expect(screen.getByRole("link", { name: "My requests" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Administration" }),
     ).not.toBeInTheDocument();
@@ -87,10 +88,10 @@ describe("role-specific navigation", () => {
 
   it("returns to the public landing page after signing out", async () => {
     authState.user = {
-      id: 7,
-      fullName: "Amina Citizen",
-      email: "amina@example.test",
-      role: "CITIZEN",
+      id: 1,
+      fullName: "Service Administrator",
+      email: "admin@example.test",
+      role: "ADMIN",
     };
     renderLayout("/dashboard");
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));

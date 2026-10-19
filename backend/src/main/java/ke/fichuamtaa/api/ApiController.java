@@ -36,6 +36,8 @@ class ApiController {
   private final NoteRepository notes;
   private final org.springframework.security.crypto.password.PasswordEncoder encoder;
   private final AuthenticationManager authManager;
+  private final AccountDeletionService accountDeletion;
+  private final ActiveSessionRegistry sessionRegistry;
   private final String cloudName, cloudKey, cloudSecret;
 
   ApiController(
@@ -45,6 +47,8 @@ class ApiController {
       NoteRepository notes,
       org.springframework.security.crypto.password.PasswordEncoder encoder,
       AuthenticationManager authManager,
+      AccountDeletionService accountDeletion,
+      ActiveSessionRegistry sessionRegistry,
       @Value("${CLOUDINARY_CLOUD_NAME:}") String cloudName,
       @Value("${CLOUDINARY_API_KEY:}") String cloudKey,
       @Value("${CLOUDINARY_API_SECRET:}") String cloudSecret) {
@@ -54,6 +58,8 @@ class ApiController {
     this.notes = notes;
     this.encoder = encoder;
     this.authManager = authManager;
+    this.accountDeletion = accountDeletion;
+    this.sessionRegistry = sessionRegistry;
     this.cloudName = cloudName;
     this.cloudKey = cloudKey;
     this.cloudSecret = cloudSecret;
@@ -84,6 +90,10 @@ class ApiController {
           @Email(message = "Please enter a valid email address.")
           String email,
       @NotBlank(message = "Please enter your password.") String password) {}
+
+  record DeleteAccount(
+      @NotBlank(message = "Please enter your password.") String password,
+      @NotBlank(message = "Type DELETE to confirm account removal.") String confirmation) {}
 
   record CreateRequest(
       @NotBlank @Size(min = 5, max = 120) String title,
@@ -156,7 +166,9 @@ class ApiController {
     context.setAuthentication(result);
     org.springframework.security.core.context.SecurityContextHolder.setContext(context);
     if (request.getSession(false) != null) request.changeSessionId();
-    request.getSession(true).setAttribute("SPRING_SECURITY_CONTEXT", context);
+    var session = request.getSession(true);
+    session.setAttribute("SPRING_SECURITY_CONTEXT", context);
+    sessionRegistry.register(user.id, session);
     return ResponseEntity.status(HttpStatus.CREATED).body(userView(user));
   }
 
@@ -172,7 +184,9 @@ class ApiController {
     org.springframework.security.core.context.SecurityContextHolder.setContext(context);
     if (req.getSession(false) != null) req.changeSessionId();
     req.getSession(true).setAttribute("SPRING_SECURITY_CONTEXT", context);
-    return Map.of("user", userView(users.findByEmailIgnoreCase(result.getName()).orElseThrow()));
+    AppUser user = users.findByEmailIgnoreCase(result.getName()).orElseThrow();
+    sessionRegistry.register(user.id, req.getSession(false));
+    return Map.of("user", userView(user));
   }
 
   @PostMapping("/auth/logout")
@@ -182,7 +196,10 @@ class ApiController {
     } catch (Exception ignored) {
     }
     var session = req.getSession(false);
-    if (session != null) session.invalidate();
+    if (session != null) {
+      sessionRegistry.unregister(session.getId());
+      session.invalidate();
+    }
     res.setHeader("Set-Cookie", "JSESSIONID=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
     return ResponseEntity.noContent().build();
   }
@@ -190,6 +207,17 @@ class ApiController {
   @GetMapping("/auth/me")
   UserView me(Authentication auth) {
     return userView(current(auth));
+  }
+
+  @DeleteMapping("/auth/account")
+  @PreAuthorize("hasRole('CITIZEN')")
+  // Override this controller's class-level read-only transaction. The deletion service joins
+  // this writable transaction so its cleanup outbox row and account deletion commit together.
+  @Transactional(readOnly = false)
+  public ResponseEntity<Void> deleteAccount(
+      @Valid @RequestBody DeleteAccount input, Authentication auth) {
+    accountDeletion.deleteCurrentAccount(auth.getName(), input.password(), input.confirmation());
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/requests")

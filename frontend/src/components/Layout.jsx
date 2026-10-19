@@ -46,9 +46,6 @@ export function Layout() {
                 <NavLink to="/requests/new">Submit request</NavLink>
                 <NavLink to="/requests">My requests</NavLink>
                 <NavLink to="/profile">Profile</NavLink>
-                <button className="nav-button" onClick={signOut}>
-                  Sign out
-                </button>
               </>
             )}
             {!checking && user?.role === "ADMIN" && (

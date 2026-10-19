@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const categories = [
@@ -9,8 +9,14 @@ const categories = [
 ];
 export default function Home() {
   const { user } = useAuth();
+  const location = useLocation();
   return (
     <>
+      {location.state?.accountDeleted && (
+        <div className="account-delete-success" role="status">
+          Your account and associated reports have been permanently deleted.
+        </div>
+      )}
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-copy">

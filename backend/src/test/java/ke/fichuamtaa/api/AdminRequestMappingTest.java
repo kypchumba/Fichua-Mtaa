@@ -63,7 +63,7 @@ class AdminRequestMappingTest {
                         : null);
 
     ApiController controller =
-        new ApiController(null, requests, history, notes, null, null, "", "", "");
+        new ApiController(null, requests, history, notes, null, null, null, null, "", "", "");
     ApiController.RequestView result = controller.adminRequest(21L);
 
     assertEquals("CITIZEN", result.citizen().role());
@@ -132,7 +132,7 @@ class AdminRequestMappingTest {
                 (proxy, method, arguments) -> List.of());
 
     ApiController controller =
-        new ApiController(users, requests, history, notes, null, null, "", "", "");
+        new ApiController(users, requests, history, notes, null, null, null, null, "", "", "");
     var auth =
         UsernamePasswordAuthenticationToken.authenticated(
             "admin@example.test", null, List.of());
@@ -198,7 +198,7 @@ class AdminRequestMappingTest {
                   throw new AssertionError("Citizen detail must not load internal notes.");
                 });
     ApiController controller =
-        new ApiController(users, requests, history, notes, null, null, "", "", "");
+        new ApiController(users, requests, history, notes, null, null, null, null, "", "", "");
     var auth = UsernamePasswordAuthenticationToken.authenticated("citizen@example.test", null, List.of());
 
     ApiController.RequestView result = controller.myRequest(21L, auth);

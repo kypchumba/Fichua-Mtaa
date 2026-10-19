@@ -21,8 +21,14 @@ class RoleAuthorizationTest {
     Method upload =
         ApiController.class.getDeclaredMethod(
             "uploadImage", org.springframework.web.multipart.MultipartFile.class);
+    Method deleteAccount =
+        ApiController.class.getDeclaredMethod(
+            "deleteAccount",
+            ApiController.DeleteAccount.class,
+            org.springframework.security.core.Authentication.class);
 
     assertEquals("hasRole('CITIZEN')", create.getAnnotation(PreAuthorize.class).value());
     assertEquals("hasRole('CITIZEN')", upload.getAnnotation(PreAuthorize.class).value());
+    assertEquals("hasRole('CITIZEN')", deleteAccount.getAnnotation(PreAuthorize.class).value());
   }
 }

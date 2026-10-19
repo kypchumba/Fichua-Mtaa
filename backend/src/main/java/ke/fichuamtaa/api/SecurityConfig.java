@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
@@ -55,6 +56,8 @@ class SecurityConfig {
       HttpSecurity http,
       RegistrationRateLimiter registrationRateLimiter,
       TrustedProxyClientIpResolver clientIpResolver,
+      UserRepository users,
+      ActiveSessionRegistry sessions,
       ObjectMapper objectMapper,
       @org.springframework.beans.factory.annotation.Value("${SESSION_COOKIE_SECURE:false}")
           boolean secureCookie,
@@ -105,6 +108,9 @@ class SecurityConfig {
         .addFilterBefore(
             new RegistrationRateLimitFilter(registrationRateLimiter, clientIpResolver),
             CsrfFilter.class)
+        .addFilterAfter(
+            new SessionAccountValidityFilter(users, sessions, objectMapper),
+            SecurityContextHolderFilter.class)
         .build();
   }
 

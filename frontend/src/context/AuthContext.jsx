@@ -49,6 +49,14 @@ export function AuthProvider({ children }) {
         setUser(null);
         setSessionExpired(false);
       },
+      async deleteAccount(credentials) {
+        await api("/auth/account", {
+          method: "DELETE",
+          body: JSON.stringify(credentials),
+        });
+        setUser(null);
+        setSessionExpired(false);
+      },
     }),
     [user, checking, sessionExpired],
   );
