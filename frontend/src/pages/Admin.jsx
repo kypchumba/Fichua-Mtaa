@@ -38,29 +38,48 @@ export default function Admin() {
     to: "",
   });
   const [page, setPage] = useState(0);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  async function load() {
-    setLoading(true);
-    setError("");
+  const [analyticsError, setAnalyticsError] = useState("");
+  const [requestsError, setRequestsError] = useState("");
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+
+  async function loadAnalytics() {
+    setAnalyticsLoading(true);
+    setAnalyticsError("");
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        size: "20",
-        sort: "createdAt,desc",
-      });
-      Object.entries(filters).forEach(([k, v]) => v && params.set(k, v));
-      const [a, r] = await Promise.all([
-        api("/admin/analytics"),
-        api(`/admin/requests?${params}`),
-      ]);
-      setAnalytics(a);
-      setRequests(r);
-    } catch (e) {
-      setError(e.message);
+      setAnalytics(await api("/admin/analytics"));
+    } catch (error) {
+      setAnalyticsError(error.message);
     } finally {
-      setLoading(false);
+      setAnalyticsLoading(false);
     }
+  }
+
+  async function loadRequests() {
+    setRequestsLoading(true);
+    setRequestsError("");
+    const params = new URLSearchParams({
+      page: String(page),
+      size: "20",
+      sort: "createdAt,desc",
+    });
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+
+    try {
+      setRequests(await api(`/admin/requests?${params}`));
+    } catch (error) {
+      setRequestsError(error.message);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }
+
+  function load() {
+    // Dashboard sections have independent failure states so analytics cannot hide requests.
+    void loadAnalytics();
+    void loadRequests();
   }
   useEffect(() => {
     const timer = setTimeout(load, 250);
@@ -70,8 +89,6 @@ export default function Admin() {
     setFilters((current) => ({ ...current, [key]: value }));
     setPage(0);
   }
-  if (loading && !analytics)
-    return <Spinner label="Loading service dashboard" />;
   const statusData = analytics
     ? Object.entries(analytics.byStatus).map(([name, value]) => ({
         name: name.replace("_", " "),
@@ -99,232 +116,251 @@ export default function Admin() {
           ↻ Refresh
         </button>
       </div>
-      <Alert>{error}</Alert>
-      {analytics && (
-        <>
-          <div className="metrics-grid">
-            <Metric
-              label="Total requests"
-              value={analytics.total}
-              tone="green"
-            />
-            <Metric label="Pending" value={analytics.pending} tone="amber" />
-            <Metric
-              label="In progress"
-              value={analytics.inProgress}
-              tone="blue"
-            />
-            <Metric label="Resolved" value={analytics.resolved} tone="mint" />
-          </div>
-          <div className="analytics-grid">
-            <article className="chart-card">
-              <div className="chart-heading">
-                <div>
-                  <h2>Requests by status</h2>
-                  <p>
-                    {analytics.open} open · {analytics.resolved} resolved
-                  </p>
-                </div>
-              </div>
-              {analytics.total === 0 ? (
-                <div className="chart-empty">No request data yet.</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={230}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={62}
-                      outerRadius={88}
-                      paddingAngle={3}
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={index} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <text
-                      x="50%"
-                      y="50%"
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className="chart-total"
-                    >
-                      {analytics.total}
-                    </text>
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-              <div className="chart-legend">
-                {statusData.map((s) => (
-                  <span key={s.name}>
-                    <i style={{ background: s.fill }} />
-                    {s.name}
-                    <b>{s.value}</b>
-                  </span>
-                ))}
-              </div>
-            </article>
-            <article className="chart-card">
-              <div className="chart-heading">
-                <div>
-                  <h2>Requests by service</h2>
-                  <p>Reports grouped by category</p>
-                </div>
-              </div>
-              {!categoryData.length ? (
-                <div className="chart-empty">No request data yet.</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart
-                    data={categoryData}
-                    layout="vertical"
-                    margin={{ left: 20, right: 16 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={130}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#327960" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </article>
-          </div>
-          <section className="admin-table-section">
-            <div className="table-heading">
-              <div>
-                <h2>Service requests</h2>
-                <p>Search and review recent citizen reports.</p>
-              </div>
-              <span>{requests?.totalElements ?? 0} total</span>
+      <section aria-labelledby="analytics-heading">
+        <h2 id="analytics-heading" className="visually-hidden">
+          Service delivery analytics
+        </h2>
+        <Alert>{analyticsError}</Alert>
+        {analyticsLoading && !analytics ? (
+          <Spinner label="Loading service analytics" />
+        ) : analytics ? (
+          <>
+            <div className="metrics-grid">
+              <Metric
+                label="Total requests"
+                value={analytics.total}
+                tone="green"
+              />
+              <Metric label="Pending" value={analytics.pending} tone="amber" />
+              <Metric
+                label="In progress"
+                value={analytics.inProgress}
+                tone="blue"
+              />
+              <Metric label="Resolved" value={analytics.resolved} tone="mint" />
             </div>
-            <div className="table-filters">
-              <input
-                aria-label="Search requests"
-                placeholder="Search title, reference or location"
-                value={filters.q}
-                onChange={(e) => updateFilter("q", e.target.value)}
-              />
-              <select
-                aria-label="Filter by status"
-                value={filters.status}
-                onChange={(e) => updateFilter("status", e.target.value)}
-              >
-                <option value="">All statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="IN_PROGRESS">In progress</option>
-                <option value="RESOLVED">Resolved</option>
-              </select>
-              <input
-                aria-label="Requests from date"
-                type="date"
-                value={filters.from}
-                onChange={(e) => updateFilter("from", e.target.value)}
-              />
-              <input
-                aria-label="Requests through date"
-                type="date"
-                value={filters.to}
-                onChange={(e) => updateFilter("to", e.target.value)}
-              />
-              <select
-                aria-label="Filter by category"
-                value={filters.category}
-                onChange={(e) => updateFilter("category", e.target.value)}
-              >
-                <option value="">All services</option>
-                {[
-                  "Roads and Drainage",
-                  "Water Supply",
-                  "Waste Collection",
-                  "Street Lighting",
-                  "Other",
-                ].map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
+            <div className="analytics-grid">
+              <article className="chart-card">
+                <div className="chart-heading">
+                  <div>
+                    <h2>Requests by status</h2>
+                    <p>
+                      {analytics.open} open · {analytics.resolved} resolved
+                    </p>
+                  </div>
+                </div>
+                {analytics.total === 0 ? (
+                  <div className="chart-empty">No request data yet.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={62}
+                        outerRadius={88}
+                        paddingAngle={3}
+                      >
+                        {statusData.map((entry, index) => (
+                          <Cell key={index} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <text
+                        x="50%"
+                        y="50%"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className="chart-total"
+                      >
+                        {analytics.total}
+                      </text>
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+                <div className="chart-legend">
+                  {statusData.map((s) => (
+                    <span key={s.name}>
+                      <i style={{ background: s.fill }} />
+                      {s.name}
+                      <b>{s.value}</b>
+                    </span>
+                  ))}
+                </div>
+              </article>
+              <article className="chart-card">
+                <div className="chart-heading">
+                  <div>
+                    <h2>Requests by service</h2>
+                    <p>Reports grouped by category</p>
+                  </div>
+                </div>
+                {!categoryData.length ? (
+                  <div className="chart-empty">No request data yet.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart
+                      data={categoryData}
+                      layout="vertical"
+                      margin={{ left: 20, right: 16 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={130}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <Tooltip />
+                      <Bar
+                        dataKey="value"
+                        fill="#327960"
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </article>
             </div>
-            {!requests?.content?.length ? (
-              <EmptyState title="No requests found">
-                Try changing the search or filters.
-              </EmptyState>
-            ) : (
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Reference</th>
-                      <th>Request</th>
-                      <th>Category</th>
-                      <th>Citizen</th>
-                      <th>Date received</th>
-                      <th>Status</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {requests.content.map((r) => (
-                      <tr key={r.id}>
-                        <td className="table-ref">{r.referenceNumber}</td>
-                        <td>
-                          <Link to={`/admin/requests/${r.id}`}>{r.title}</Link>
-                          <small>{r.location}</small>
-                        </td>
-                        <td>{r.category}</td>
-                        <td>
-                          {r.citizen.fullName}
-                          <small>{r.citizen.email}</small>
-                        </td>
-                        <td>{when(r.createdAt)}</td>
-                        <td>
-                          <StatusBadge status={r.status} />
-                        </td>
-                        <td>
-                          <Link
-                            className="table-view"
-                            to={`/admin/requests/${r.id}`}
-                            aria-label={`View ${r.referenceNumber}`}
-                          >
-                            →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {requests?.totalPages > 1 && (
-              <div className="pagination" aria-label="Request pages">
-                <button
-                  type="button"
-                  disabled={page === 0 || loading}
-                  onClick={() => setPage((current) => current - 1)}
-                >
-                  Previous
-                </button>
-                <span>
-                  Page {page + 1} of {requests.totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={page + 1 >= requests.totalPages || loading}
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </section>
-        </>
-      )}
+          </>
+        ) : null}
+      </section>
+
+      <section
+        className="admin-table-section"
+        aria-labelledby="requests-heading"
+      >
+        <div className="table-heading">
+          <div>
+            <h2 id="requests-heading">Service requests</h2>
+            <p>Search and review recent citizen reports.</p>
+          </div>
+          <span>{requests?.totalElements ?? 0} total</span>
+        </div>
+        <Alert>{requestsError}</Alert>
+        {requestsLoading && !requests ? (
+          <Spinner label="Loading service requests" />
+        ) : null}
+        <div className="table-filters">
+          <input
+            aria-label="Search requests"
+            placeholder="Search title, reference or location"
+            value={filters.q}
+            onChange={(e) => updateFilter("q", e.target.value)}
+          />
+          <select
+            aria-label="Filter by status"
+            value={filters.status}
+            onChange={(e) => updateFilter("status", e.target.value)}
+          >
+            <option value="">All statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="IN_PROGRESS">In progress</option>
+            <option value="RESOLVED">Resolved</option>
+          </select>
+          <input
+            aria-label="Requests from date"
+            type="date"
+            value={filters.from}
+            onChange={(e) => updateFilter("from", e.target.value)}
+          />
+          <input
+            aria-label="Requests through date"
+            type="date"
+            value={filters.to}
+            onChange={(e) => updateFilter("to", e.target.value)}
+          />
+          <select
+            aria-label="Filter by category"
+            value={filters.category}
+            onChange={(e) => updateFilter("category", e.target.value)}
+          >
+            <option value="">All services</option>
+            {[
+              "Roads and Drainage",
+              "Water Supply",
+              "Waste Collection",
+              "Street Lighting",
+              "Other",
+            ].map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        {requests && !requests.content.length ? (
+          <EmptyState title="No requests found">
+            Try changing the search or filters.
+          </EmptyState>
+        ) : requests?.content?.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Request</th>
+                  <th>Category</th>
+                  <th>Citizen</th>
+                  <th>Date received</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {requests.content.map((r) => (
+                  <tr key={r.id}>
+                    <td className="table-ref">{r.referenceNumber}</td>
+                    <td>
+                      <Link to={`/admin/requests/${r.id}`}>{r.title}</Link>
+                      <small>{r.location}</small>
+                    </td>
+                    <td>{r.category}</td>
+                    <td>
+                      {r.citizen.fullName}
+                      <small>{r.citizen.email}</small>
+                    </td>
+                    <td>{when(r.createdAt)}</td>
+                    <td>
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td>
+                      <Link
+                        className="table-view"
+                        to={`/admin/requests/${r.id}`}
+                        aria-label={`View ${r.referenceNumber}`}
+                      >
+                        →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        {requests?.totalPages > 1 && (
+          <div className="pagination" aria-label="Request pages">
+            <button
+              type="button"
+              disabled={page === 0 || requestsLoading}
+              onClick={() => setPage((current) => current - 1)}
+            >
+              Previous
+            </button>
+            <span>
+              Page {page + 1} of {requests.totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={page + 1 >= requests.totalPages || requestsLoading}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </section>
     </section>
   );
 }
