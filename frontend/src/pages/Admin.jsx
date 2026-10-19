@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { api } from "../api/client";
 import { Alert, EmptyState, Spinner, StatusBadge } from "../components/UI";
+import SignOutControl from "../components/SignOutControl";
 
 const colors = {
   PENDING: "#b9822c",
@@ -42,6 +43,10 @@ export default function Admin() {
   const [requestsError, setRequestsError] = useState("");
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [requestsLoading, setRequestsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshPulse, setRefreshPulse] = useState(false);
+  const refreshInFlight = useRef(false);
+  const pulseTimer = useRef(null);
 
   async function loadAnalytics() {
     setAnalyticsLoading(true);
@@ -78,13 +83,28 @@ export default function Admin() {
 
   function load() {
     // Dashboard sections have independent failure states so analytics cannot hide requests.
-    void loadAnalytics();
-    void loadRequests();
+    return Promise.all([loadAnalytics(), loadRequests()]);
+  }
+
+  async function refreshDashboard() {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    setRefreshing(true);
+    setRefreshPulse(true);
+    clearTimeout(pulseTimer.current);
+    pulseTimer.current = setTimeout(() => setRefreshPulse(false), 700);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+      refreshInFlight.current = false;
+    }
   }
   useEffect(() => {
     const timer = setTimeout(load, 250);
     return () => clearTimeout(timer);
   }, [filters, page]);
+  useEffect(() => () => clearTimeout(pulseTimer.current), []);
   function updateFilter(key, value) {
     setFilters((current) => ({ ...current, [key]: value }));
     setPage(0);
@@ -112,9 +132,20 @@ export default function Admin() {
             A live view of community reports and their progress.
           </p>
         </div>
-        <button className="button button-outline" onClick={load}>
-          ↻ Refresh
-        </button>
+        <div className="admin-actions">
+          <button
+            aria-label="Refresh dashboard"
+            aria-busy={refreshing}
+            className={`button button-outline refresh-button${refreshing ? " is-refreshing" : ""}${refreshPulse ? " is-flashing" : ""}`}
+            disabled={refreshing}
+            onClick={refreshDashboard}
+            type="button"
+          >
+            <span aria-hidden="true" className="refresh-icon">↻</span>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+          <SignOutControl className="button button-outline" />
+        </div>
       </div>
       <section aria-labelledby="analytics-heading">
         <h2 id="analytics-heading" className="visually-hidden">

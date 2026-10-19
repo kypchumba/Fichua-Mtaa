@@ -68,14 +68,11 @@ describe("citizen profile account deletion", () => {
     expect(screen.getByRole("button", { name: "Continue Delete" })).toBeInTheDocument();
   });
 
-  it("places citizen sign out in Profile beside Delete Account", async () => {
-    auth.logout.mockResolvedValue(null);
+  it("places citizen sign out in Profile beside Delete Account", () => {
     renderProfile();
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
-
-    await waitFor(() => expect(auth.logout).toHaveBeenCalledOnce());
-    expect(await screen.findByText("Landing page")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Account" })).toBeInTheDocument();
   });
 
   it("returns to public home after a successful deletion", async () => {

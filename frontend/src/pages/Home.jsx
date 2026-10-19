@@ -164,6 +164,16 @@ export default function Home() {
           <span>→</span>
         </Link>
       </section>
+      {!user && (
+        <section aria-label="Account access" className="mobile-account-actions">
+          <Link className="button button-outline" to="/login">
+            Sign in
+          </Link>
+          <Link className="button button-primary" to="/register">
+            Register
+          </Link>
+        </section>
+      )}
     </>
   );
 }

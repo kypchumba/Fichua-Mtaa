@@ -1,11 +1,14 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { api } from "../api/client";
 import Admin from "./Admin";
 
 vi.mock("../api/client", () => ({ api: vi.fn() }));
+vi.mock("../components/SignOutControl", () => ({
+  default: ({ className }) => <button className={className}>Sign out</button>,
+}));
 
 // Recharts observes container size; jsdom has no native ResizeObserver.
 globalThis.ResizeObserver ??= class {
@@ -84,5 +87,86 @@ describe("admin dashboard data loading", () => {
     });
     expect(screen.getByText("Total requests")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
+  });
+
+  it("shows the administrator sign-out control beside Refresh", async () => {
+    api.mockImplementation((path) =>
+      path === "/admin/analytics"
+        ? Promise.resolve({
+            total: 0,
+            pending: 0,
+            inProgress: 0,
+            resolved: 0,
+            open: 0,
+            byStatus: {},
+            byCategory: {},
+          })
+        : Promise.resolve({ content: [], totalElements: 0, totalPages: 0 }),
+    );
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>,
+    );
+
+    const refresh = screen.getByRole("button", { name: "Refresh dashboard" });
+    const signOut = screen.getByRole("button", { name: "Sign out" });
+    expect(refresh.parentElement).toBe(signOut.parentElement);
+    await waitFor(() => expect(screen.getAllByText("No request data yet.")).toHaveLength(2));
+  });
+
+  it("shows loading feedback during manual refresh, including when requests fail", async () => {
+    api.mockImplementation((path) =>
+      path === "/admin/analytics"
+        ? Promise.resolve({
+            total: 0,
+            pending: 0,
+            inProgress: 0,
+            resolved: 0,
+            open: 0,
+            byStatus: {},
+            byCategory: {},
+          })
+        : Promise.resolve({ content: [], totalElements: 0, totalPages: 0 }),
+    );
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>,
+    );
+    const refresh = screen.getByRole("button", { name: "Refresh dashboard" });
+    await waitFor(() => expect(api).toHaveBeenCalledTimes(2));
+
+    let finishAnalytics;
+    let finishRequests;
+    api.mockImplementation((path) =>
+      new Promise((resolve, reject) => {
+        if (path === "/admin/analytics") {
+          finishAnalytics = () => resolve({
+            total: 0,
+            pending: 0,
+            inProgress: 0,
+            resolved: 0,
+            open: 0,
+            byStatus: {},
+            byCategory: {},
+          });
+        } else {
+          finishRequests = () => reject(new Error("Request list unavailable"));
+        }
+      }),
+    );
+
+    fireEvent.click(refresh);
+    expect(refresh).toBeDisabled();
+    expect(refresh).toHaveTextContent("Refreshing…");
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(refresh);
+    expect(api).toHaveBeenCalledTimes(4);
+
+    finishAnalytics();
+    finishRequests();
+    expect(await screen.findByText("Request list unavailable")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Refresh dashboard" })).toBeEnabled();
   });
 });

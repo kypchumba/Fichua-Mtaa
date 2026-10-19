@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import SignOutControl from "../components/SignOutControl";
 
 export default function Profile() {
-  const { user, deleteAccount, logout } = useAuth();
+  const { user, deleteAccount } = useAuth();
   const navigate = useNavigate();
   const deleteButtonRef = useRef(null);
   const modalRef = useRef(null);
@@ -88,11 +89,6 @@ export default function Profile() {
     }
   }
 
-  async function signOut() {
-    await logout();
-    navigate("/", { replace: true });
-  }
-
   return (
     <section className="page-wrap profile-page">
       <span className="eyebrow">ACCOUNT</span>
@@ -124,9 +120,7 @@ export default function Profile() {
         <h2>Account options</h2>
         <p>Deleting your account permanently removes your profile and reports.</p>
         <div className="profile-account-actions">
-          <button className="button button-outline" onClick={signOut} type="button">
-            Sign out
-          </button>
+          <SignOutControl className="button button-outline" />
           <button
             className="button button-danger-outline"
             onClick={() => {
