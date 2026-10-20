@@ -96,9 +96,19 @@ class ApiController {
       @NotBlank(message = "Type DELETE to confirm account removal.") String confirmation) {}
 
   record CreateRequest(
-      @NotBlank @Size(min = 5, max = 120) String title,
+        @NotBlank(message = "Please enter a request title.")
+          @Size(
+              min = 5,
+              max = 120,
+              message = "Request title must be between 5 and 120 characters.")
+          String title,
       @NotBlank String category,
-      @NotBlank @Size(max = 180) String location,
+        @NotBlank(message = "Please enter the affected location.")
+          @Size(
+              min = 3,
+              max = 180,
+              message = "Affected location must be between 3 and 180 characters.")
+          String location,
       @NotBlank @Size(min = 20, max = 3000) String description,
       @Size(max = 1000) String attachmentUrl) {}
 

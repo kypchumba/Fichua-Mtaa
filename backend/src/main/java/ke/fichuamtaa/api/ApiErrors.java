@@ -42,7 +42,7 @@ class ApiErrors {
     });
 
     return ResponseEntity.badRequest()
-        .body(Map.of("message", "Please check the highlighted fields.", "fields", fields));
+        .body(Map.of("message", "Please correct the highlighted fields.", "fields", fields));
   }
 
   @ExceptionHandler(ResponseStatusException.class)
@@ -81,6 +81,10 @@ class ApiErrors {
         case "email" -> "Please enter your email address.";
         case "password" -> "Please enter your password.";
         case "confirmation" -> "Please confirm your password.";
+        case "title" -> "Please enter a request title.";
+        case "category" -> "Please choose a service category.";
+        case "location" -> "Please enter the affected location.";
+        case "description" -> "Please describe the issue.";
         default -> "Please complete this field.";
       };
     }
@@ -93,8 +97,8 @@ class ApiErrors {
         case "fullName" -> "Full name must be 120 characters or fewer.";
         case "email" -> "Email address must be 254 characters or fewer.";
         case "password" -> "Password must be between 8 and 72 characters.";
-        case "title" -> "Title must be between 5 and 120 characters.";
-        case "location" -> "Location must be 180 characters or fewer.";
+        case "title" -> "Request title must be between 5 and 120 characters.";
+        case "location" -> "Affected location must be between 3 and 180 characters.";
         case "description" -> "Description must be between 20 and 3000 characters.";
         case "body" -> "Note must be 2000 characters or fewer.";
         default -> "Please check the length of this field.";
