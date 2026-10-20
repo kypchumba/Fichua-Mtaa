@@ -2,9 +2,10 @@ package ke.fichuamtaa.api;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.lang.reflect.Proxy;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,6 +14,7 @@ import org.springframework.security.authentication.InternalAuthenticationService
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -132,21 +134,59 @@ class AuthErrorTest {
       UserRepository users,
       AuthenticationManager authManager,
       org.springframework.security.crypto.password.PasswordEncoder encoder) {
+    RequestRepository requests = emptyRepository(RequestRepository.class);
+    HistoryRepository history = emptyRepository(HistoryRepository.class);
+    NoteRepository notes = emptyRepository(NoteRepository.class);
+    CloudinaryCleanupRepository cleanupTasks =
+        emptyRepository(CloudinaryCleanupRepository.class);
+    ActiveSessionRegistry sessions = new ActiveSessionRegistry();
+    AccountDeletionService accountDeletion =
+        new AccountDeletionService(users, requests, cleanupTasks, encoder, sessions, "", "");
+    CsrfTokenRepository csrfTokens = new SecurityConfig().csrfTokenRepository(false, "lax");
+
     return new ApiController(
         users,
-        null,
-        null,
-        null,
+        requests,
+        history,
+        notes,
         encoder,
         authManager,
-        null,
-        new ActiveSessionRegistry(),
-        null,
+        accountDeletion,
+        sessions,
+        csrfTokens,
         false,
         "lax",
         "",
         "",
         "");
+  }
+
+  private <T> T emptyRepository(Class<T> repositoryType) {
+    return repositoryType.cast(
+        Proxy.newProxyInstance(
+            repositoryType.getClassLoader(),
+            new Class<?>[] {repositoryType},
+            (proxy, method, arguments) -> {
+              if ("toString".equals(method.getName())) {
+                return "Unused repository test fixture";
+              }
+              if ("hashCode".equals(method.getName())) {
+                return System.identityHashCode(proxy);
+              }
+              if ("equals".equals(method.getName())) {
+                return proxy == arguments[0];
+              }
+              if (boolean.class.equals(method.getReturnType())) {
+                return false;
+              }
+              if (Optional.class.equals(method.getReturnType())) {
+                return Optional.empty();
+              }
+              if (List.class.isAssignableFrom(method.getReturnType())) {
+                return List.of();
+              }
+              return null;
+            }));
   }
 
   private UserRepository userRepository(boolean emailExists, AtomicReference<AppUser> saved) {
