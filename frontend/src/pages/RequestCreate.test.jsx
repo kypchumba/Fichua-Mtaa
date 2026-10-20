@@ -10,7 +10,7 @@ describe("request form category routing", () => {
   it("preselects a supported category from the service link URL", () => {
     render(
       <MemoryRouter
-        initialEntries={["/requests/new?category=Roads%20and%20Drainage"]}
+        initialEntries={["/requests/new?category=Drainage%20and%20Flooding"]}
       >
         <Routes>
           <Route path="/requests/new" element={<RequestCreate />} />
@@ -20,7 +20,10 @@ describe("request form category routing", () => {
 
     expect(
       screen.getByRole("combobox", { name: /Service category/ }),
-    ).toHaveValue("Roads and Drainage");
+    ).toHaveValue("Drainage and Flooding");
+    expect(
+      screen.getAllByRole("option").filter((option) => option.value),
+    ).toHaveLength(8);
   });
 
   it("ignores unsupported category query values", () => {

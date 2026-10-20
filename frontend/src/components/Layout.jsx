@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import SignOutControl from "./SignOutControl";
+import { ScrollManager } from "./ScrollManager";
 
 export function Layout() {
   const { user, checking } = useAuth();
@@ -37,6 +38,7 @@ export function Layout() {
 
   return (
     <>
+      <ScrollManager />
       <header
         className={[
           "site-header",

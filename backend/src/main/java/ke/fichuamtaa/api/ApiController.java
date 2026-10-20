@@ -146,8 +146,7 @@ class ApiController {
 
   @PostMapping("/auth/register")
   @Transactional
-  ResponseEntity<UserView> register(
-      @Valid @RequestBody Register input, HttpServletRequest request) {
+  ResponseEntity<UserView> register(@Valid @RequestBody Register input) {
     if (!input.password().equals(input.confirmation()))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords must match.");
     String email = input.email().trim().toLowerCase(Locale.ROOT);
@@ -159,16 +158,6 @@ class ApiController {
         users.save(
             new AppUser(
                 input.fullName().trim(), email, encoder.encode(input.password()), Role.CITIZEN));
-    var result =
-        authManager.authenticate(new UsernamePasswordAuthenticationToken(email, input.password()));
-    var context =
-        org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
-    context.setAuthentication(result);
-    org.springframework.security.core.context.SecurityContextHolder.setContext(context);
-    if (request.getSession(false) != null) request.changeSessionId();
-    var session = request.getSession(true);
-    session.setAttribute("SPRING_SECURITY_CONTEXT", context);
-    sessionRegistry.register(user.id, session);
     return ResponseEntity.status(HttpStatus.CREATED).body(userView(user));
   }
 
@@ -573,9 +562,20 @@ class ApiController {
         n);
   }
 
-  private String validCategory(String c) {
+  static String validCategory(String c) {
     if (!Set.of(
-            "Roads and Drainage", "Water Supply", "Waste Collection", "Street Lighting", "Other")
+            "Waste Management",
+            "Roads and Transport",
+            "Drainage and Flooding",
+            "Street Lighting",
+            "Water and Sanitation",
+            "Public Facilities",
+            "Public Safety Hazards",
+            "Community Development",
+            "Roads and Drainage",
+            "Water Supply",
+            "Waste Collection",
+            "Other")
         .contains(c))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported service category");
     return c;

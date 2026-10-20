@@ -109,7 +109,8 @@ describe("authentication forms", () => {
     fill(/^Email address/, "citizen@example.com");
     fill(/^Password/, "lowercase1!");
     fill(/^Confirm password/, "lowercase1!");
-    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    const submitButton = screen.getByRole("button", { name: /create account/i });
+    fireEvent.click(submitButton);
 
     expect(
       screen.getByText("Password must meet all the requirements shown below."),
@@ -142,7 +143,7 @@ describe("authentication forms", () => {
     );
   });
 
-  it("shows the duplicate-email registration message", async () => {
+  it("shows a useful duplicate-email registration failure and preserves entered values", async () => {
     authMocks.register.mockRejectedValue(
       new Error(
         "An account with this email already exists. Please log in instead.",
@@ -155,11 +156,66 @@ describe("authentication forms", () => {
     fill(/^Confirm password/, "Community-Access-2026");
     fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        "An account with this email already exists. Please log in instead.",
-      ),
+    const dialog = await screen.findByRole("dialog", { name: "Registration failed" });
+    expect(dialog).toHaveTextContent("This email address is already registered.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByLabelText(/^Email address/)).toHaveValue("citizen@example.com");
+    expect(screen.getByLabelText(/^Password/)).toHaveValue("Community-Access-2026");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows a loading modal and prevents duplicate registration submissions", async () => {
+    let resolveRegistration;
+    authMocks.register.mockImplementation(
+      () => new Promise((resolve) => { resolveRegistration = resolve; }),
     );
+    renderAuth(true);
+    fill(/^Full name/, "Amina Citizen");
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "Community-Access-2026");
+    fill(/^Confirm password/, "Community-Access-2026");
+    const submitButton = screen.getByRole("button", { name: /create account/i });
+    fireEvent.click(submitButton);
+
+    expect(await screen.findByRole("dialog", { name: "Creating your account..." }))
+      .toHaveTextContent("Please wait while we securely create your account.");
+    expect(submitButton).toBeDisabled();
+    fireEvent.click(submitButton);
+    expect(authMocks.register).toHaveBeenCalledOnce();
+    resolveRegistration({ role: "CITIZEN" });
+  });
+
+  it("shows a safe password requirement message for backend validation failures", async () => {
+    const error = new Error("Server validation detail must not be exposed.");
+    error.fields = { password: "invalid" };
+    authMocks.register.mockRejectedValue(error);
+    renderAuth(true);
+    fill(/^Full name/, "Amina Citizen");
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "Community-Access-2026");
+    fill(/^Confirm password/, "Community-Access-2026");
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Registration failed" });
+    expect(dialog).toHaveTextContent("Use at least 8 characters");
+    expect(dialog).not.toHaveTextContent("Server validation detail");
+  });
+
+  it.each([
+    ["network failure", new Error("Network error including private details")],
+    ["server failure", Object.assign(new Error("SQL constraint failed"), { status: 500 })],
+  ])("shows a safe generic message after a %s", async (_label, error) => {
+    authMocks.register.mockRejectedValue(error);
+    renderAuth(true);
+    fill(/^Full name/, "Amina Citizen");
+    fill(/^Email address/, "citizen@example.com");
+    fill(/^Password/, "Community-Access-2026");
+    fill(/^Confirm password/, "Community-Access-2026");
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Registration failed" });
+    expect(dialog).toHaveTextContent("Something went wrong. Please try again.");
+    expect(dialog).not.toHaveTextContent(/SQL|private details/);
   });
 
   it("routes a successful citizen login to the citizen dashboard", async () => {
@@ -235,13 +291,13 @@ describe("authentication forms", () => {
     expect(authMocks.login).toHaveBeenCalledOnce();
   });
 
-  it("preserves the selected service when a visitor creates an account", async () => {
+  it("shows success only after server confirmation, then sends the visitor to sign-in", async () => {
     authMocks.register.mockResolvedValue({ role: "CITIZEN" });
     render(
       <MemoryRouter
         initialEntries={[
           {
-            pathname: "/login",
+            pathname: "/register",
             state: {
               returnTo: "/requests/new?category=Water%20Supply",
               from: "/services",
@@ -250,24 +306,25 @@ describe("authentication forms", () => {
         ]}
       >
         <Routes>
-          <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage register />} />
+          <Route path="/login" element={<AuthPage />} />
           <Route path="/requests/new" element={<RequestedForm />} />
           <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
         </Routes>
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
     fill(/^Full name/, "Amina Citizen");
     fill(/^Email address/, "citizen@example.com");
     fill(/^Password/, "Community-Access-2026");
     fill(/^Confirm password/, "Community-Access-2026");
     fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
-    expect(
-      await screen.findByText(
-        "Report form ?category=Water%20Supply from /services",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Registration successful!" }))
+      .toHaveTextContent("Your account has been created. Please sign in to continue.");
+    expect(authMocks.register).toHaveBeenCalledOnce();
+    expect(authMocks.login).not.toHaveBeenCalled();
+    await screen.findByLabelText(/^Email address/, {}, { timeout: 3000 });
+    expect(screen.getByLabelText(/^Email address/)).toHaveValue("");
+    expect(screen.getByLabelText(/^Password/)).toHaveValue("");
   });
 });

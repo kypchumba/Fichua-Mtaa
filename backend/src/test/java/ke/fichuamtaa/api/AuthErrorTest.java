@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.lang.reflect.Proxy;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
-import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
@@ -98,8 +97,7 @@ class AuthErrorTest {
                         "Citizen",
                         "citizen@example.com",
                         "Community-Access-2026",
-                        "Community-Access-2026"),
-                    new MockHttpServletRequest()));
+                        "Community-Access-2026")));
 
     assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
     assertEquals(
@@ -123,8 +121,7 @@ class AuthErrorTest {
     var response =
         controller.register(
             new ApiController.Register(
-                "Citizen", "citizen@example.com", "Community-Access-2026", "Community-Access-2026"),
-            new MockHttpServletRequest());
+                "Citizen", "citizen@example.com", "Community-Access-2026", "Community-Access-2026"));
 
     assertEquals(HttpStatus.CREATED, response.getStatusCode());
     assertEquals("CITIZEN", response.getBody().role());

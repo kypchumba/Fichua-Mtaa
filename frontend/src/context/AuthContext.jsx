@@ -36,13 +36,10 @@ export function AuthProvider({ children }) {
         return result.user;
       },
       async register(fields) {
-        const result = await api("/auth/register", {
+        return api("/auth/register", {
           method: "POST",
           body: JSON.stringify(fields),
         });
-        setUser(result);
-        setSessionExpired(false);
-        return result;
       },
       async logout() {
         await api("/auth/logout", { method: "POST" });

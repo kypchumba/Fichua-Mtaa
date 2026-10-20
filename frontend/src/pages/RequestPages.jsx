@@ -17,8 +17,18 @@ import {
 } from "../components/UI";
 import { BackLink } from "../components/BackLink";
 import { ImageLightbox } from "../components/ImageLightbox";
+import {
+  LEGACY_SERVICE_CATEGORIES,
+  SERVICE_CATEGORIES,
+} from "../data/services";
 
-const categories = [
+const serviceCategories = SERVICE_CATEGORIES.map(({ category }) => category);
+const requestFilterCategories = [
+  ...new Set([...serviceCategories, ...LEGACY_SERVICE_CATEGORIES]),
+];
+
+// Keep existing administrator assignment choices while retaining old category labels.
+const adminAssignmentCategories = [
   "Roads and Drainage",
   "Water Supply",
   "Waste Collection",
@@ -39,7 +49,7 @@ export function RequestCreate() {
   const initialCategory = searchParams.get("category");
   const [values, setValues] = useState({
     title: "",
-    category: categories.includes(initialCategory) ? initialCategory : "",
+    category: serviceCategories.includes(initialCategory) ? initialCategory : "",
     location: "",
     description: "",
   });
@@ -158,7 +168,7 @@ export function RequestCreate() {
             }}
           >
             <option value="">Choose a category</option>
-            {categories.map((c) => (
+            {serviceCategories.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </Field>
@@ -300,7 +310,7 @@ export function MyRequests() {
           onChange={(e) => setCategory(e.target.value)}
         >
           <option value="ALL">All services</option>
-          {categories.map((c) => (
+          {requestFilterCategories.map((c) => (
             <option key={c}>{c}</option>
           ))}
         </select>
@@ -599,7 +609,7 @@ function AdminControls({ item, onChange }) {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
-            {categories.map((service) => (
+            {adminAssignmentCategories.map((service) => (
               <option key={service}>{service}</option>
             ))}
           </select>

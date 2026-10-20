@@ -16,6 +16,31 @@ afterEach(() => {
 });
 
 describe("public landing page account links", () => {
+  it("keeps the hero focused on centered content without decorative artwork", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      /Sauti yako,\s*Jukumu letu\./,
+    );
+    expect(container.querySelector(".hero-art")).toBeNull();
+  });
+
+  it("keeps four briefing service cards that lead to the dedicated page", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>,
+    );
+    const cards = container.querySelectorAll(".category-tile");
+
+    expect(cards).toHaveLength(4);
+    cards.forEach((card) => expect(card).toHaveAttribute("href", "/services"));
+  });
+
   it("offers sign-in and registration at the end of the guest landing page", () => {
     render(
       <MemoryRouter>

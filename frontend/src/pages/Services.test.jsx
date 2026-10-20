@@ -41,23 +41,63 @@ describe("service reporting links", () => {
     authState.user = null;
   });
 
+  it("shows eight current categories with their report examples", () => {
+    renderServices();
+
+    const titles = [
+      "Waste Management",
+      "Roads and Transport",
+      "Drainage and Flooding",
+      "Street Lighting",
+      "Water and Sanitation",
+      "Public Facilities",
+      "Public Safety Hazards",
+      "Community Development",
+    ];
+
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(8);
+    titles.forEach((title) => {
+      expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("Uncollected garbage and overflowing bins"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Abandoned or stalled public projects"),
+    ).toBeInTheDocument();
+  });
+
   it("takes a visitor to sign-in with the selected service preserved", () => {
     renderServices();
-    fireEvent.click(screen.getByRole("link", { name: "Report Roads and drainage" }));
+    fireEvent.click(
+      screen.getByRole("link", { name: "Report Roads and Transport" }),
+    );
 
-    expect(screen.getByText(/\/login\/requests\/new\?category=Roads%20and%20Drainage/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /\/login\/requests\/new\?category=Roads%20and%20Transport/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("opens the citizen form with the selected service category", () => {
     renderServices({ role: "CITIZEN" });
-    fireEvent.click(screen.getByRole("link", { name: "Report Water supply" }));
+    fireEvent.click(
+      screen.getByRole("link", { name: "Report Water and Sanitation" }),
+    );
 
-    expect(screen.getByText("/requests/new?category=Water%20Supply")).toBeInTheDocument();
+    expect(
+      screen.getByText("/requests/new?category=Water%20and%20Sanitation"),
+    ).toBeInTheDocument();
   });
 
   it("sends administrators to administration instead of the citizen form", () => {
     renderServices({ role: "ADMIN" });
-    fireEvent.click(screen.getByRole("link", { name: "Review Water supply requests" }));
+    fireEvent.click(
+      screen.getByRole("link", {
+        name: "Review Water and Sanitation requests",
+      }),
+    );
 
     expect(screen.getByText("/admin")).toBeInTheDocument();
   });

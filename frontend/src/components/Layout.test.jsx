@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { Layout } from "./Layout";
 
@@ -32,6 +32,10 @@ function renderLayout(path = "/") {
 }
 
 describe("role-specific navigation", () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn();
+  });
+
   afterEach(() => {
     cleanup();
     authState.user = null;

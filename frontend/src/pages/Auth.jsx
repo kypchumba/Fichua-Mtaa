@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Alert, Button, Field } from "../components/UI";
@@ -25,6 +25,25 @@ const passwordRequirements = [
     test: (value) => !/\s/.test(value),
   },
 ];
+
+const REGISTRATION_SUCCESS_DELAY = 1600;
+
+function registrationFailureMessage(error) {
+  const message = error?.message || "";
+  if (/already exists|already registered|email.*(use|exist)/i.test(message)) {
+    return "This email address is already registered. Please sign in or use another email.";
+  }
+  if (/password/i.test(message) || error?.fields?.password) {
+    return "Please correct your password. Use at least 8 characters with uppercase and lowercase letters, a number, a special character, and no spaces.";
+  }
+  if (
+    Object.keys(error?.fields || {}).length > 0 ||
+    /validation|invalid|missing|must not be blank|required/i.test(message)
+  ) {
+    return "Some details need correcting. Review the highlighted fields and try again.";
+  }
+  return "Something went wrong. Please try again.";
+}
 
 function validateFields(fields, register) {
   const errors = {};
@@ -68,12 +87,74 @@ export function AuthPage({ register = false }) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [registrationStatus, setRegistrationStatus] = useState(null);
+  const [registrationMessage, setRegistrationMessage] = useState("");
+  const registrationDialogRef = useRef(null);
   const [fields, setFields] = useState({
     fullName: "",
     email: "",
     password: "",
     confirmation: "",
   });
+
+  useEffect(() => {
+    if (!registrationStatus) return undefined;
+
+    const previousFocus = document.activeElement;
+    registrationDialogRef.current?.focus();
+    if (registrationStatus !== "success") {
+      return () => previousFocus?.focus?.();
+    }
+
+    const timer = window.setTimeout(() => {
+      navigate("/login", {
+        replace: true,
+        state: {
+          returnTo: location.state?.returnTo,
+          from: location.state?.from,
+          registrationSuccess: true,
+        },
+      });
+    }, REGISTRATION_SUCCESS_DELAY);
+    return () => {
+      window.clearTimeout(timer);
+      previousFocus?.focus?.();
+    };
+  }, [registrationStatus, navigate, location.state?.from, location.state?.returnTo]);
+
+  useEffect(() => {
+    if (!registrationStatus) return undefined;
+
+    function keepFocusInModal(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        return;
+      }
+      if (event.key !== "Tab" || !registrationDialogRef.current) return;
+
+      const controls = Array.from(
+        registrationDialogRef.current.querySelectorAll("button:not([disabled])"),
+      );
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (!controls.length) {
+        event.preventDefault();
+        registrationDialogRef.current.focus();
+      } else if (!controls.includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", keepFocusInModal);
+    return () => document.removeEventListener("keydown", keepFocusInModal);
+  }, [registrationStatus]);
   if (user) {
     return (
       <Navigate
@@ -86,6 +167,7 @@ export function AuthPage({ register = false }) {
   const update = (e) =>
     setFields((current) => ({ ...current, [e.target.name]: e.target.value }));
   async function submit(e) {
+    if (loading) return;
     e.preventDefault();
     setError("");
     setFieldErrors({});
@@ -95,27 +177,51 @@ export function AuthPage({ register = false }) {
       return;
     }
     setLoading(true);
+    if (register) {
+      setRegistrationMessage("");
+      setRegistrationStatus("loading");
+    }
     try {
-      const account = register
-        ? await createAccount({
+      if (register) {
+        await createAccount({
             fullName: fields.fullName,
             email: fields.email,
             password: fields.password,
             confirmation: fields.confirmation,
-          })
-        : await login({ email: fields.email, password: fields.password });
+          });
+        // The login route can reuse this page instance, so discard registration credentials now.
+        setFields({ fullName: "", email: "", password: "", confirmation: "" });
+        setRegistrationStatus("success");
+        setLoading(false);
+        return;
+      }
+      const account = await login({ email: fields.email, password: fields.password });
       navigate(postLoginPath(account.role, location.state?.returnTo), {
         replace: true,
         state: { from: location.state?.from },
       });
     } catch (err) {
-      setError(
-        err.message || "Unable to complete your request. Please try again.",
-      );
-      setFieldErrors(err.fields || {});
+      if (register) {
+        const safeMessage = registrationFailureMessage(err);
+        setRegistrationMessage(safeMessage);
+        setRegistrationStatus("error");
+        setError(safeMessage);
+        setFieldErrors(err.fields || {});
+      } else {
+        setError(
+          err.message || "Unable to complete your request. Please try again.",
+        );
+        setFieldErrors(err.fields || {});
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function retryRegistration() {
+    setRegistrationStatus(null);
+    setRegistrationMessage("");
+    setError("");
   }
   return (
     <section className="auth-page">
@@ -135,6 +241,52 @@ export function AuthPage({ register = false }) {
           <p>Good communities are built when people feel heard.</p>
         </div>
       </div>
+      {register && registrationStatus && (
+        <div className="registration-overlay">
+          <section
+            aria-describedby="registration-feedback-message"
+            aria-labelledby="registration-feedback-title"
+            aria-live="assertive"
+            aria-modal="true"
+            aria-busy={registrationStatus === "loading"}
+            className={`registration-feedback registration-feedback-${registrationStatus}`}
+            ref={registrationDialogRef}
+            role="dialog"
+            tabIndex={-1}
+          >
+            {registrationStatus === "loading" ? (
+              <span aria-hidden="true" className="registration-spinner" />
+            ) : (
+              <span aria-hidden="true" className="registration-result-icon">
+                {registrationStatus === "success" ? "✓" : "×"}
+              </span>
+            )}
+            <h2 id="registration-feedback-title">
+              {registrationStatus === "loading"
+                ? "Creating your account..."
+                : registrationStatus === "success"
+                  ? "Registration successful!"
+                  : "Registration failed"}
+            </h2>
+            <p id="registration-feedback-message" role="status">
+              {registrationStatus === "loading"
+                ? "Please wait while we securely create your account."
+                : registrationStatus === "success"
+                  ? "Your account has been created. Please sign in to continue."
+                  : registrationMessage}
+            </p>
+            {registrationStatus === "error" && (
+              <button
+                className="button button-primary registration-retry"
+                onClick={retryRegistration}
+                type="button"
+              >
+                Try again
+              </button>
+            )}
+          </section>
+        </div>
+      )}
       <div className="auth-panel">
         <span className="eyebrow">
           {register ? "CREATE YOUR ACCOUNT" : "CITIZEN PORTAL"}

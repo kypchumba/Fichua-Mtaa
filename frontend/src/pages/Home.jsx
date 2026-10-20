@@ -1,12 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-const categories = [
-  "Roads & drainage",
-  "Water supply",
-  "Waste collection",
-  "Street lighting",
-];
+import { HOME_SERVICE_PREVIEW } from "../data/services";
 export default function Home() {
   const { user } = useAuth();
   const location = useLocation();
@@ -21,7 +15,7 @@ export default function Home() {
         <div className="hero-inner">
           <div className="hero-copy">
             <span className="eyebrow">
-              <span className="live-dot" /> YOU ASK WE DELIVER.
+              YOU ASK WE DELIVER.
             </span>
             <h1>
               Sauti yako,
@@ -51,33 +45,6 @@ export default function Home() {
                 Explore services
               </Link>
             </div>
-            <div className="hero-trust">
-              <span className="avatar-stack">
-                <i>M</i>
-                <i>A</i>
-                <i>J</i>
-              </span>
-              <span>
-                Small reports. <b>Real change.</b>
-              </span>
-            </div>
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="sun" />
-            <div className="hill hill-back" />
-            <div className="hill hill-front" />
-            <div className="art-road" />
-            <div className="art-pin">
-              <span>FM</span>
-            </div>
-            <div className="art-label">
-              <b>Community report</b>
-              <small>Progress you can follow</small>
-            </div>
-            <div className="art-cloud cloud-one" />
-            <div className="art-cloud cloud-two" />
-            <span className="art-tree tree-one">♧</span>
-            <span className="art-tree tree-two">♧</span>
           </div>
         </div>
       </section>
@@ -129,12 +96,16 @@ export default function Home() {
             </Link>
           </div>
           <div className="category-grid">
-            {categories.map((item, index) => (
-              <Link to="/services" className="category-tile" key={item}>
+            {HOME_SERVICE_PREVIEW.map((service, index) => (
+              <Link
+                to="/services"
+                className="category-tile"
+                key={service.category}
+              >
                 <span className={`category-symbol symbol-${index}`}>
-                  {["⌁", "≈", "▤", "☼"][index]}
+                  {service.icon}
                 </span>
-                <span>{item}</span>
+                <span>{service.category}</span>
                 <b aria-hidden="true">↗</b>
               </Link>
             ))}

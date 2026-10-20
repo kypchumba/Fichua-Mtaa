@@ -1,38 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { SERVICE_CATEGORIES } from "../data/services";
 
-const services = [
-  {
-    title: "Roads and drainage",
-    category: "Roads and Drainage",
-    body: "Potholes, damaged roads, blocked drains and flooding concerns.",
-    icon: "⌁",
-  },
-  {
-    title: "Water supply",
-    category: "Water Supply",
-    body: "Water interruptions, leaks, low pressure and quality concerns.",
-    icon: "≈",
-  },
-  {
-    title: "Waste collection",
-    category: "Waste Collection",
-    body: "Missed collection, illegal dumping and overflowing public bins.",
-    icon: "▤",
-  },
-  {
-    title: "Street lighting",
-    category: "Street Lighting",
-    body: "Streetlights that are damaged, unsafe or not working.",
-    icon: "☼",
-  },
-  {
-    title: "Other community services",
-    category: "Other",
-    body: "A local public service concern that does not fit another category.",
-    icon: "＋",
-  },
-];
 export default function Services() {
   const { user } = useAuth();
 
@@ -45,14 +14,14 @@ export default function Services() {
         reference number you can use to follow up.
       </p>
       <div className="service-grid">
-        {services.map((service) => {
+        {SERVICE_CATEGORIES.map((service, index) => {
           const requestPath = `/requests/new?category=${encodeURIComponent(service.category)}`;
           const isAdmin = user?.role === "ADMIN";
 
           return (
             <Link
               className="service-card-link"
-              key={service.title}
+              key={service.category}
               to={isAdmin ? "/admin" : user ? requestPath : "/login"}
               state={{
                 ...(!isAdmin && { from: "/services" }),
@@ -60,14 +29,20 @@ export default function Services() {
               }}
               aria-label={
                 isAdmin
-                  ? `Review ${service.title} requests`
-                  : `Report ${service.title}`
+                  ? `Review ${service.category} requests`
+                  : `Report ${service.category}`
               }
             >
               <article className="service-card">
-                <span className="service-icon">{service.icon}</span>
-                <h2>{service.title}</h2>
-                <p>{service.body}</p>
+                <span className={`service-icon symbol-${index % 4}`} aria-hidden="true">
+                  {service.icon}
+                </span>
+                <h2>{service.category}</h2>
+                <ul className="service-examples">
+                  {service.examples.map((example) => (
+                    <li key={example}>{example}</li>
+                  ))}
+                </ul>
                 <span className="service-card-action">
                   {isAdmin ? "Review service requests" : "Report this service"}{" "}
                   <span aria-hidden="true">→</span>
