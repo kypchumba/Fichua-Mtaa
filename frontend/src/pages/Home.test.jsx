@@ -49,7 +49,8 @@ describe("public landing page account links", () => {
     );
 
     const accountActions = screen.getByRole("region", { name: "Account access" });
-    expect(accountActions).toHaveClass("mobile-account-actions");
+    expect(accountActions).toHaveClass("home-account-actions");
+    expect(accountActions.querySelectorAll(".home-account-action")).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login",
@@ -58,6 +59,18 @@ describe("public landing page account links", () => {
       "href",
       "/register",
     );
+    expect(
+      screen.getByText("Already registered? Sign in."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("New to Fichua Mtaa? Create an account."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Sign in" }).closest(".home-account-action"),
+    ).toHaveTextContent("Already registered? Sign in.");
+    expect(
+      screen.getByRole("link", { name: "Register" }).closest(".home-account-action"),
+    ).toHaveTextContent("New to Fichua Mtaa? Create an account.");
   });
 
   it("does not add guest account buttons for authenticated users", () => {

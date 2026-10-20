@@ -34,7 +34,7 @@ function registrationFailureMessage(error) {
     return "This email address is already registered. Please sign in or use another email.";
   }
   if (/password/i.test(message) || error?.fields?.password) {
-    return "Please correct your password. Use at least 8 characters with uppercase and lowercase letters, a number, a special character, and no spaces.";
+    return "Please correct your password. Use at least 8 characters with uppercase and lowercase letters, a number, a special character and no spaces.";
   }
   if (
     Object.keys(error?.fields || {}).length > 0 ||

@@ -58,8 +58,15 @@ export function CitizenDashboard() {
             <h2 id="recent-title">Recent requests</h2>
             <p>Only you and service administrators can view these reports.</p>
           </div>
-          <Link to="/requests">View all requests</Link>
         </div>
+        <nav className="citizen-dashboard-actions" aria-label="Request and account links">
+          <Link className="button button-primary" to="/requests">
+            View all requests
+          </Link>
+          <Link className="button button-outline" to="/profile">
+            View account details
+          </Link>
+        </nav>
 
         {loading ? (
           <Spinner label="Loading your service dashboard" />
@@ -91,15 +98,15 @@ export function CitizenDashboard() {
                 <time dateTime={request.createdAt}>
                   {formatDate(request.createdAt)}
                 </time>
+                <Link className="button button-outline row-view" to={`/requests/${request.id}`}>
+                  View
+                </Link>
               </article>
             ))}
           </div>
         )}
       </section>
 
-      <Link className="citizen-profile-link" to="/profile">
-        View your account details <span aria-hidden="true">→</span>
-      </Link>
     </section>
   );
 }

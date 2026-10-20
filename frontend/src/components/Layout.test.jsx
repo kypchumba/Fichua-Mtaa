@@ -22,7 +22,11 @@ function renderLayout(path = "/") {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<h1>Official public landing page</h1>} />
+          <Route path="/services" element={<p>Service categories</p>} />
           <Route path="/dashboard" element={<p>Citizen dashboard</p>} />
+          <Route path="/requests/new" element={<p>New request</p>} />
+          <Route path="/requests" element={<p>My requests</p>} />
+          <Route path="/requests/:id" element={<p>Request details</p>} />
           <Route path="/profile" element={<p>Citizen profile</p>} />
           <Route path="/admin" element={<p>Administration workspace</p>} />
         </Route>
@@ -72,6 +76,24 @@ describe("role-specific navigation", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps homepage authentication links plain in desktop navigation", () => {
+    renderLayout("/");
+
+    const navigation = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute(
+      "href",
+      "/register",
+    );
+    expect(navigation).not.toHaveTextContent("Already registered? Sign in.");
+    expect(navigation).not.toHaveTextContent(
+      "New to Fichua Mtaa? Create an account.",
+    );
+  });
+
   it("keeps citizen request actions out of administrator navigation", () => {
     authState.user = {
       id: 1,
@@ -111,6 +133,34 @@ describe("role-specific navigation", () => {
     for (const name of ["Home", "Services", "Dashboard", "Submit request", "My requests", "Profile"]) {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     }
+  });
+
+  it("highlights My requests on request details but not on the submission form", () => {
+    authState.user = {
+      id: 7,
+      fullName: "Amina Citizen",
+      email: "amina@example.test",
+      role: "CITIZEN",
+    };
+
+    const { unmount } = renderLayout("/requests/42");
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
+    expect(screen.getByRole("link", { name: "My requests" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    unmount();
+
+    renderLayout("/requests/new");
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
+    expect(screen.getByRole("link", { name: "Submit request" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: "My requests" })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("closes the citizen menu on Escape and route selection", () => {

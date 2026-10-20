@@ -357,11 +357,10 @@ export default function Admin() {
                     </td>
                     <td>
                       <Link
-                        className="table-view"
+                        className="button button-outline table-view"
                         to={`/admin/requests/${r.id}`}
-                        aria-label={`View ${r.referenceNumber}`}
                       >
-                        →
+                        View
                       </Link>
                     </td>
                   </tr>

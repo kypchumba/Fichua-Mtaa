@@ -17,6 +17,7 @@ import {
 } from "../components/UI";
 import { BackLink } from "../components/BackLink";
 import { ImageLightbox } from "../components/ImageLightbox";
+import { RequestTitleField } from "../components/RequestTitleField";
 import {
   LEGACY_SERVICE_CATEGORIES,
   SERVICE_CATEGORIES,
@@ -57,6 +58,7 @@ export function RequestCreate() {
   const [preview, setPreview] = useState("");
   const [metadata, setMetadata] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   useEffect(
@@ -103,6 +105,7 @@ export function RequestCreate() {
   async function submit(event) {
     event.preventDefault();
     setError("");
+    setFieldErrors({});
     setLoading(true);
     try {
       let attachmentUrl = null;
@@ -126,10 +129,20 @@ export function RequestCreate() {
       });
     } catch (err) {
       setError(err.message);
+      setFieldErrors(err.fields || {});
     } finally {
       setLoading(false);
       setUploading(false);
     }
+  }
+  function updateField(name, value) {
+    setValues((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => {
+      if (!(name in current)) return current;
+      const next = { ...current };
+      delete next[name];
+      return next;
+    });
   }
   return (
     <section className="form-page">
@@ -143,24 +156,21 @@ export function RequestCreate() {
       <form className="request-form" onSubmit={submit}>
         <Alert>{error}</Alert>
         <div className="form-grid">
-          <Field
-            label="Request title"
-            name="title"
-            required
-            maxLength={120}
-            hint="A short summary of the issue."
+          <RequestTitleField
             value={values.title}
-            onChange={(e) => setValues({ ...values, title: e.target.value })}
+            error={fieldErrors.title}
+            onChange={(event) => updateField("title", event.target.value)}
           />
           <Field
             label="Service category"
             name="category"
             as="select"
             required
+            error={fieldErrors.category}
             value={values.category}
             onChange={(e) => {
               const category = e.target.value;
-              setValues((current) => ({ ...current, category }));
+              updateField("category", category);
               const nextParams = new URLSearchParams(searchParams);
               if (category) nextParams.set("category", category);
               else nextParams.delete("category");
@@ -177,24 +187,24 @@ export function RequestCreate() {
           label="Location or area affected"
           name="location"
           required
+          error={fieldErrors.location}
           maxLength={180}
           placeholder="e.g. near the market on Main Road"
           value={values.location}
-          onChange={(e) => setValues({ ...values, location: e.target.value })}
+          onChange={(e) => updateField("location", e.target.value)}
         />
         <Field
           label="Describe the issue"
           name="description"
           as="textarea"
           required
+          error={fieldErrors.description}
           minLength={20}
           maxLength={3000}
           rows={6}
           hint={`${values.description.length}/3000 characters. Include when it started and who is affected.`}
           value={values.description}
-          onChange={(e) =>
-            setValues({ ...values, description: e.target.value })
-          }
+          onChange={(e) => updateField("description", e.target.value)}
         />
         <div className="upload-field">
           <label htmlFor="image">
@@ -354,12 +364,8 @@ export function MyRequests() {
                 </p>
               </div>
               <time>{date(item.createdAt)}</time>
-              <Link
-                className="row-link"
-                to={`/requests/${item.id}`}
-                aria-label={`View ${item.referenceNumber}`}
-              >
-                →
+              <Link className="button button-outline row-view" to={`/requests/${item.id}`}>
+                View
               </Link>
             </article>
           ))}

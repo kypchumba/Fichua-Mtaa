@@ -23,7 +23,7 @@ export default function Home() {
               <em>Jukumu letu.</em>
             </h1>
             <p>
-              Report a local service issue, follow its progress, and help build
+              Report a local service issue, follow its progress and help build
               a community that works for everyone.
             </p>
             <div className="hero-actions">
@@ -136,13 +136,19 @@ export default function Home() {
         </Link>
       </section>
       {!user && (
-        <section aria-label="Account access" className="mobile-account-actions">
-          <Link className="button button-outline" to="/login">
-            Sign in
-          </Link>
-          <Link className="button button-primary" to="/register">
-            Register
-          </Link>
+        <section aria-label="Account access" className="home-account-actions">
+          <div className="home-account-action">
+            <p>New to Fichua Mtaa? Create an account.</p>
+            <Link className="button button-primary" to="/register">
+              Register
+            </Link>
+          </div>
+          <div className="home-account-action">
+            <p>Already registered? Sign in.</p>
+            <Link className="button button-outline" to="/login">
+              Sign in
+            </Link>
+          </div>
         </section>
       )}
     </>

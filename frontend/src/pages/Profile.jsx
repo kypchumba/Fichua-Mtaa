@@ -149,7 +149,7 @@ export default function Profile() {
                 <h2 id="account-delete-title">Permanently delete your account?</h2>
                 <p>
                   This action is permanent and irreversible. Your account,
-                  profile information, submitted reports, and associated
+                  profile information, submitted reports and associated
                   user-owned records will be deleted from the database.
                 </p>
                 <p className="account-delete-alternative">

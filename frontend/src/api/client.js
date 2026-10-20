@@ -42,7 +42,7 @@ function responseMessage(path, status, payload, fields) {
       : "The service is temporarily unavailable. Please try again later.";
   }
   if (status === 400 && Object.keys(fields).length > 0) {
-    return payload?.message || "Please check the highlighted fields.";
+    return payload?.message || "Please correct the highlighted fields.";
   }
   if (status === 404) return "The requested item could not be found.";
   if (typeof payload?.message === "string" && payload.message.length <= 240) {

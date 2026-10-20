@@ -10,6 +10,11 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigationRef = useRef(null);
   const isCitizen = !checking && user?.role === "CITIZEN";
+  const isRequestListRoute =
+    location.pathname === "/requests" ||
+    (location.pathname.startsWith("/requests/") &&
+      location.pathname !== "/requests/new" &&
+      !location.pathname.startsWith("/requests/new/"));
 
   useEffect(() => {
     setMenuOpen(false);
@@ -103,8 +108,21 @@ export function Layout() {
               {isCitizen && (
                 <>
                   <NavLink onClick={() => setMenuOpen(false)} to="/dashboard">Dashboard</NavLink>
-                  <NavLink onClick={() => setMenuOpen(false)} to="/requests/new">Submit request</NavLink>
-                  <NavLink onClick={() => setMenuOpen(false)} to="/requests">My requests</NavLink>
+              <NavLink
+                end
+                onClick={() => setMenuOpen(false)}
+                to="/requests/new"
+              >
+                Submit request
+              </NavLink>
+              <Link
+                aria-current={isRequestListRoute ? "page" : undefined}
+                className={isRequestListRoute ? "active" : undefined}
+                onClick={() => setMenuOpen(false)}
+                to="/requests"
+              >
+                My requests
+              </Link>
                   <NavLink onClick={() => setMenuOpen(false)} to="/profile">Profile</NavLink>
                 </>
               )}
