@@ -12,18 +12,24 @@ class CorsConfigurationTest {
   @Test
   void allowsMultipleExplicitCredentialedFrontendOrigins() {
     var source = securityConfig.corsConfigurationSource(
-        "http://localhost:5173, http://192.168.1.24:5173");
+        "http://localhost:5173, http://192.168.1.24:5173, https://fichua-mtaa-1.onrender.com");
     var request = new MockHttpServletRequest("GET", "/api/health");
     var cors = source.getCorsConfiguration(request);
 
     assertNotNull(cors);
     assertEquals(
-        List.of("http://localhost:5173", "http://192.168.1.24:5173"),
+        List.of(
+            "http://localhost:5173",
+            "http://192.168.1.24:5173",
+            "https://fichua-mtaa-1.onrender.com"),
         cors.getAllowedOrigins());
     assertEquals("http://localhost:5173", cors.checkOrigin("http://localhost:5173"));
     assertEquals(
         "http://192.168.1.24:5173",
         cors.checkOrigin("http://192.168.1.24:5173"));
+    assertEquals(
+        "https://fichua-mtaa-1.onrender.com",
+        cors.checkOrigin("https://fichua-mtaa-1.onrender.com"));
     assertTrue(cors.getAllowCredentials());
     assertTrue(cors.getAllowedMethods().contains("OPTIONS"));
     assertTrue(cors.getAllowedHeaders().contains("X-XSRF-TOKEN"));

@@ -21,13 +21,26 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.*;
 
 @Configuration
 @EnableMethodSecurity
 class SecurityConfig {
+  static final String RAW_CSRF_TOKEN_ATTRIBUTE = "fichuamtaa.raw-csrf-token";
+
+  static final RequestMatcher CSRF_BOOTSTRAP_REQUEST =
+      request -> {
+        String path = request.getServletPath();
+        if (path == null || path.isBlank()) {
+          path = request.getRequestURI().substring(request.getContextPath().length());
+        }
+        return HttpMethod.GET.matches(request.getMethod()) && "/api/auth/csrf".equals(path);
+      };
+
   @Bean
   PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
@@ -60,14 +73,8 @@ class SecurityConfig {
       UserRepository users,
       ActiveSessionRegistry sessions,
       ObjectMapper objectMapper,
-      @org.springframework.beans.factory.annotation.Value("${SESSION_COOKIE_SECURE:false}")
-          boolean secureCookie,
-      @org.springframework.beans.factory.annotation.Value("${SESSION_SAME_SITE:lax}")
-          String sameSite)
+      CsrfTokenRepository csrfRepo)
       throws Exception {
-    var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
-    csrfRepo.setCookiePath("/");
-    csrfRepo.setCookieCustomizer(cookie -> cookie.secure(secureCookie).sameSite(sameSite));
     return http.cors(c -> {})
         .csrf(
             c ->
@@ -76,6 +83,9 @@ class SecurityConfig {
         .authorizeHttpRequests(
             a ->
                 a.requestMatchers("/api/auth/register", "/api/auth/login", "/api/health")
+                    .permitAll()
+                    // Browsers need an anonymous bootstrap request before a CSRF-protected login.
+                    .requestMatchers(CSRF_BOOTSTRAP_REQUEST)
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
@@ -115,6 +125,18 @@ class SecurityConfig {
         .build();
   }
 
+  @Bean
+  CsrfTokenRepository csrfTokenRepository(
+      @org.springframework.beans.factory.annotation.Value("${SESSION_COOKIE_SECURE:false}")
+          boolean secureCookie,
+      @org.springframework.beans.factory.annotation.Value("${SESSION_SAME_SITE:lax}")
+          String sameSite) {
+    var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+    csrfRepo.setCookiePath("/");
+    csrfRepo.setCookieCustomizer(cookie -> cookie.secure(secureCookie).sameSite(sameSite));
+    return csrfRepo;
+  }
+
   private static void writeApiError(
       ObjectMapper mapper, HttpServletResponse response, int status, String message)
       throws IOException {
@@ -147,8 +169,7 @@ class SecurityConfig {
   }
 }
 
-// Spring uses an XOR token for rendered forms; this handler also accepts the raw double-submit
-// cookie token used by the SPA.
+// Retain XOR masking for request attributes while accepting the SPA's raw cookie token in a header.
 final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
   private final CsrfTokenRequestHandler xor = new XorCsrfTokenRequestAttributeHandler();
 
@@ -158,7 +179,9 @@ final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
       jakarta.servlet.http.HttpServletResponse response,
       java.util.function.Supplier<org.springframework.security.web.csrf.CsrfToken> token) {
     xor.handle(request, response, token);
-    token.get();
+    var rawToken = token.get();
+    // The SPA is cross-origin in production, so it reads the token from this JSON endpoint.
+    request.setAttribute(SecurityConfig.RAW_CSRF_TOKEN_ATTRIBUTE, rawToken.getToken());
   }
 
   @Override

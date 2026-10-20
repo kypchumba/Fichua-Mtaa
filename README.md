@@ -25,7 +25,7 @@ Request statuses follow `PENDING → IN_PROGRESS → RESOLVED`.
 | Maps | Leaflet, OpenStreetMap |
 | Charts | Recharts |
 | Image storage | Cloudinary (optional) |
-| Deployment | Vercel, Render, Neon PostgreSQL |
+| Deployment | Render, Neon PostgreSQL |
 
 ## Project Structure
 
@@ -136,19 +136,6 @@ mvn package
 ```
 
 Automated tests should use isolated test data and must never connect to the production database.
-
-## Deployment
-
-The project is designed for free-tier-oriented deployment:
-
-1. Push the repository to GitHub.
-2. Create a PostgreSQL database on [Neon](https://neon.com/).
-3. Deploy the backend to [Render](https://render.com/) using the provided configuration.
-4. Configure database credentials, CORS, session settings and administrator bootstrap variables in Render.
-5. Deploy `frontend/` to [Vercel](https://vercel.com/), using `npm run build`, the `dist` output directory and the deployed backend URL as `VITE_API_BASE_URL`.
-6. Configure the exact Vercel origin in Render and test authentication, authorization, request submission and administration.
-
-Free-tier services may sleep, impose quotas, or change their terms. Image uploads require optional Cloudinary configuration. Review current provider limits before deployment.
 
 ## Security and Data Handling
 

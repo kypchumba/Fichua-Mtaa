@@ -13,7 +13,7 @@ services:
       - key: DATABASE_PASSWORD
         sync: false
       - key: FRONTEND_ORIGIN
-        sync: false
+        value: https://fichua-mtaa-1.onrender.com
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: SESSION_SAME_SITE

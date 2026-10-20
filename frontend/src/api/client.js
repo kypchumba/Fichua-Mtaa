@@ -60,14 +60,25 @@ async function request(url, options) {
   }
 }
 
-// Browser-managed cookies keep session identifiers out of JavaScript storage.
-function csrfCookie() {
-  return document.cookie
-    .split("; ")
-    .find((part) => part.startsWith("XSRF-TOKEN="))
-    ?.split("=")
-    .slice(1)
-    .join("=");
+// The frontend and API may be on separate origins, so JavaScript cannot read the
+// API's XSRF cookie. Fetch the matching token from the API response body instead.
+async function fetchCsrfToken() {
+  const response = await request(`${base}/auth/csrf`, {
+    method: "GET",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || typeof payload.token !== "string" || !payload.token) {
+    const error = new Error(
+      "Unable to establish a secure connection. Refresh the page and try again.",
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return payload.token;
 }
 
 export async function api(path, options = {}) {
@@ -79,10 +90,9 @@ export async function api(path, options = {}) {
     ...options.headers,
   };
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    if (!csrfCookie())
-      await request(`${base}/auth/csrf`, { credentials: "include" });
-    const token = csrfCookie();
-    if (token) headers["X-XSRF-TOKEN"] = decodeURIComponent(token);
+    // Refresh the token before every write so login/logout and later mutations
+    // always use the token paired with the API's current CSRF cookie.
+    headers["X-XSRF-TOKEN"] = await fetchCsrfToken();
   }
   const response = await request(`${base}${path}`, {
     ...options,

@@ -18,6 +18,7 @@ import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,6 +39,9 @@ class ApiController {
   private final AuthenticationManager authManager;
   private final AccountDeletionService accountDeletion;
   private final ActiveSessionRegistry sessionRegistry;
+  private final CsrfTokenRepository csrfTokenRepository;
+  private final boolean secureSessionCookie;
+  private final String sessionSameSite;
   private final String cloudName, cloudKey, cloudSecret;
 
   ApiController(
@@ -49,6 +53,9 @@ class ApiController {
       AuthenticationManager authManager,
       AccountDeletionService accountDeletion,
       ActiveSessionRegistry sessionRegistry,
+      CsrfTokenRepository csrfTokenRepository,
+      @Value("${SESSION_COOKIE_SECURE:false}") boolean secureSessionCookie,
+      @Value("${SESSION_SAME_SITE:lax}") String sessionSameSite,
       @Value("${CLOUDINARY_CLOUD_NAME:}") String cloudName,
       @Value("${CLOUDINARY_API_KEY:}") String cloudKey,
       @Value("${CLOUDINARY_API_SECRET:}") String cloudSecret) {
@@ -60,6 +67,9 @@ class ApiController {
     this.authManager = authManager;
     this.accountDeletion = accountDeletion;
     this.sessionRegistry = sessionRegistry;
+    this.csrfTokenRepository = csrfTokenRepository;
+    this.secureSessionCookie = secureSessionCookie;
+    this.sessionSameSite = sessionSameSite;
     this.cloudName = cloudName;
     this.cloudKey = cloudKey;
     this.cloudSecret = cloudSecret;
@@ -150,8 +160,9 @@ class ApiController {
   }
 
   @GetMapping("/auth/csrf")
-  Map<String, String> csrf(CsrfToken token) {
-    return Map.of("token", token.getToken());
+  Map<String, String> csrf(HttpServletRequest request) {
+    return Map.of(
+        "token", (String) request.getAttribute(SecurityConfig.RAW_CSRF_TOKEN_ATTRIBUTE));
   }
 
   @PostMapping("/auth/register")
@@ -172,7 +183,8 @@ class ApiController {
   }
 
   @PostMapping("/auth/login")
-  Map<String, Object> login(@Valid @RequestBody Login input, HttpServletRequest req) {
+  Map<String, Object> login(
+      @Valid @RequestBody Login input, HttpServletRequest req, HttpServletResponse response) {
     var result =
         authManager.authenticate(
             new UsernamePasswordAuthenticationToken(
@@ -185,6 +197,9 @@ class ApiController {
     req.getSession(true).setAttribute("SPRING_SECURITY_CONTEXT", context);
     AppUser user = users.findByEmailIgnoreCase(result.getName()).orElseThrow();
     sessionRegistry.register(user.id, req.getSession(false));
+    // Authentication starts a fresh CSRF-token cycle; the browser fetches the next token before
+    // its next write rather than relying on an anonymous token created before sign-in.
+    csrfTokenRepository.saveToken(null, req, response);
     return Map.of("user", userView(user));
   }
 
@@ -199,7 +214,16 @@ class ApiController {
       sessionRegistry.unregister(session.getId());
       session.invalidate();
     }
-    res.setHeader("Set-Cookie", "JSESSIONID=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+    csrfTokenRepository.saveToken(null, req, res);
+    org.springframework.http.ResponseCookie expiredSessionCookie =
+        org.springframework.http.ResponseCookie.from("JSESSIONID", "")
+            .path("/")
+            .httpOnly(true)
+            .secure(secureSessionCookie)
+            .sameSite(sessionSameSite)
+            .maxAge(Duration.ZERO)
+            .build();
+    res.addHeader(HttpHeaders.SET_COOKIE, expiredSessionCookie.toString());
     return ResponseEntity.noContent().build();
   }
 

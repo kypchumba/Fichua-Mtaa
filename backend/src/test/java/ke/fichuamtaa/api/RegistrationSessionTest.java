@@ -54,7 +54,20 @@ class RegistrationSessionTest {
         authentication -> fail("Registration must not authenticate the new account.");
     ApiController controller =
         new ApiController(
-            users, null, null, null, encoder, authenticationManager, null, null, "", "", "");
+            users,
+            null,
+            null,
+            null,
+            encoder,
+            authenticationManager,
+            null,
+            null,
+            null,
+            false,
+            "lax",
+            "",
+            "",
+            "");
     SecurityContextHolder.clearContext();
 
     var response =

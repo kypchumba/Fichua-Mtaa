@@ -1,6 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./client";
 
+function jsonResponse(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function stubMutationResponses(...responses) {
+  const queued = responses.flatMap((response) => [
+    jsonResponse({ token: "csrf-from-api" }),
+    response,
+  ]);
+  const fetchMock = vi.fn(async () => queued.shift());
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
 describe("API upload errors", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -9,18 +26,13 @@ describe("API upload errors", () => {
   });
 
   it("reports provider upload failures without losing the useful server message", async () => {
-    document.cookie = "XSRF-TOKEN=test-token";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              message:
-                "Image upload failed. You can retry or submit without an image.",
-            }),
-            { status: 502, headers: { "Content-Type": "application/json" } },
-          ),
+    const fetchMock = stubMutationResponses(
+      jsonResponse(
+        {
+          message:
+            "Image upload failed. You can retry or submit without an image.",
+        },
+        502,
       ),
     );
     const form = new FormData();
@@ -34,18 +46,16 @@ describe("API upload errors", () => {
     ).rejects.toThrow(
       "Image upload failed. You can retry or submit without an image.",
     );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/auth\/csrf$/);
+    expect(fetchMock.mock.calls[1][1].headers["X-XSRF-TOKEN"]).toBe(
+      "csrf-from-api",
+    );
   });
 
   it("uses the same generic message for every login credential failure", async () => {
-    document.cookie = "XSRF-TOKEN=test-token";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({ message: "Account not found", fields: {} }),
-          { status: 401, headers: { "Content-Type": "application/json" } },
-        ),
-      ),
+    const fetchMock = stubMutationResponses(
+      jsonResponse({ message: "Account not found", fields: {} }, 401),
     );
 
     await expect(
@@ -54,18 +64,15 @@ describe("API upload errors", () => {
         body: JSON.stringify({ email: "unknown@example.com", password: "bad" }),
       }),
     ).rejects.toThrow("Incorrect email or password. Please try again.");
+    expect(fetchMock.mock.calls[1][1].headers["X-XSRF-TOKEN"]).toBe(
+      "csrf-from-api",
+    );
+    expect(fetchMock.mock.calls[1][1].credentials).toBe("include");
   });
 
   it("shows a clear duplicate-email message during registration", async () => {
-    document.cookie = "XSRF-TOKEN=test-token";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify({ message: "Email is already taken" }), {
-          status: 409,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
+    stubMutationResponses(
+      jsonResponse({ message: "Email is already taken" }, 409),
     );
 
     await expect(
@@ -79,21 +86,13 @@ describe("API upload errors", () => {
   });
 
   it("preserves field-level validation messages and handles registration throttling", async () => {
-    document.cookie = "XSRF-TOKEN=test-token";
-    const responses = [
-      new Response(
-        JSON.stringify({
+    stubMutationResponses(
+      jsonResponse({
           message: "Please check the highlighted fields.",
           fields: { email: "Please enter your email address." },
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      ),
-      new Response(JSON.stringify({ message: "Limited" }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      }),
-    ];
-    vi.stubGlobal("fetch", vi.fn(async () => responses.shift()));
+        }, 400),
+      jsonResponse({ message: "Limited" }, 429),
+    );
 
     await expect(
       api("/auth/register", { method: "POST", body: "{}" }),
@@ -114,6 +113,23 @@ describe("API upload errors", () => {
     await expect(api("/auth/me")).rejects.toThrow(
       "Unable to connect to the service. Please check your connection and try again.",
     );
+  });
+
+  it("does not submit a write when CSRF bootstrap fails", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ message: "Please sign in to continue." }, 401),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      api("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: "citizen@example.com", password: "secret" }),
+      }),
+    ).rejects.toThrow(
+      "Unable to establish a secure connection. Refresh the page and try again.",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("signals an expired authenticated session on protected API responses", async () => {
