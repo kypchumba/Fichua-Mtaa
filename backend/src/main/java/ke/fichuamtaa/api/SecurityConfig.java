@@ -3,6 +3,7 @@ package ke.fichuamtaa.api;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,20 @@ class SecurityConfig {
         }
         return HttpMethod.GET.matches(request.getMethod()) && "/api/auth/csrf".equals(path);
       };
+
+  static String resolveSameSite(boolean secureCookie, String configuredValue) {
+    String sameSite =
+        configuredValue == null || configuredValue.isBlank()
+            ? (secureCookie ? "none" : "lax")
+            : configuredValue.trim().toLowerCase(Locale.ROOT);
+
+    // This app's production frontend and API use separate sites, so secure deployments need None.
+    if (secureCookie != "none".equals(sameSite)) {
+      throw new IllegalStateException(
+          "Use SESSION_SAME_SITE=none with SESSION_COOKIE_SECURE=true for this cross-site SPA.");
+    }
+    return sameSite;
+  }
 
   @Bean
   PasswordEncoder passwordEncoder() {
@@ -129,11 +144,12 @@ class SecurityConfig {
   CsrfTokenRepository csrfTokenRepository(
       @org.springframework.beans.factory.annotation.Value("${SESSION_COOKIE_SECURE:false}")
           boolean secureCookie,
-      @org.springframework.beans.factory.annotation.Value("${SESSION_SAME_SITE:lax}")
+      @org.springframework.beans.factory.annotation.Value("${SESSION_SAME_SITE:none}")
           String sameSite) {
+    String cookieSameSite = resolveSameSite(secureCookie, sameSite);
     var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
     csrfRepo.setCookiePath("/");
-    csrfRepo.setCookieCustomizer(cookie -> cookie.secure(secureCookie).sameSite(sameSite));
+    csrfRepo.setCookieCustomizer(cookie -> cookie.secure(secureCookie).sameSite(cookieSameSite));
     return csrfRepo;
   }
 

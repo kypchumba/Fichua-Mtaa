@@ -33,6 +33,7 @@ class AuthenticationCsrfFlowIntegrationTest {
   private static final String EMAIL = "citizen@example.test";
   private static final String PASSWORD = "Valid-Password-2026";
   private static final String XSRF_COOKIE = "XSRF-TOKEN";
+  private static final String FRONTEND_ORIGIN = "https://fichua-mtaa-1.onrender.com";
 
   private AnnotationConfigWebApplicationContext context;
   private MockMvc mvc;
@@ -49,7 +50,9 @@ class AuthenticationCsrfFlowIntegrationTest {
                 "test-properties",
                 Map.of(
                     "app.cors.allowed-origins",
-                    "http://localhost:5173",
+                    FRONTEND_ORIGIN,
+                    "SESSION_COOKIE_SECURE",
+                    "true",
                     "registration.rate-limit.window",
                     "PT15M")));
     context.register(TestWebConfiguration.class);
@@ -66,24 +69,49 @@ class AuthenticationCsrfFlowIntegrationTest {
 
   @Test
   void csrfLoginProtectedWriteAndLogoutUseTheRealFilterChain() throws Exception {
+    mvc.perform(
+            options("/api/auth/login")
+                .header("Origin", FRONTEND_ORIGIN)
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type,x-xsrf-token"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND_ORIGIN))
+        .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+
     MvcResult anonymousCsrf =
-        mvc.perform(get("/api/auth/csrf"))
+        mvc.perform(get("/api/auth/csrf").header("Origin", FRONTEND_ORIGIN))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").isNotEmpty())
+            .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND_ORIGIN))
+            .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
             .andReturn();
     String anonymousToken = token(anonymousCsrf);
     var anonymousCookie = anonymousCsrf.getResponse().getCookie(XSRF_COOKIE);
     assertNotNull(anonymousCookie, "CSRF bootstrap should issue the double-submit cookie");
     assertFalse(anonymousToken.isBlank());
+    assertEquals(anonymousToken, anonymousCookie.getValue());
+    assertTrue(anonymousCookie.getSecure());
+    assertEquals("none", anonymousCookie.getAttribute("SameSite"));
+
+    // A browser that blocks the cross-site cookie must not be able to submit with only a header.
+    mvc.perform(
+            post("/api/auth/login")
+                .header("Origin", FRONTEND_ORIGIN)
+                .header("X-XSRF-TOKEN", anonymousToken)
+                .contentType("application/json")
+                .content(json(Map.of("email", EMAIL, "password", PASSWORD))))
+        .andExpect(status().isForbidden());
 
     MvcResult login =
         mvc.perform(
                 post("/api/auth/login")
+                    .header("Origin", FRONTEND_ORIGIN)
                     .cookie(anonymousCookie)
                     .header("X-XSRF-TOKEN", anonymousToken)
                     .contentType("application/json")
                     .content(json(Map.of("email", EMAIL, "password", PASSWORD))))
             .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND_ORIGIN))
             .andExpect(jsonPath("$.user.email").value(EMAIL))
             .andReturn();
     MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
@@ -91,13 +119,14 @@ class AuthenticationCsrfFlowIntegrationTest {
     assertNotNull(session.getAttribute("SPRING_SECURITY_CONTEXT"));
 
     MvcResult authenticatedCsrf =
-        mvc.perform(get("/api/auth/csrf").session(session))
+        mvc.perform(get("/api/auth/csrf").header("Origin", FRONTEND_ORIGIN).session(session))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").isNotEmpty())
             .andReturn();
     String freshToken = token(authenticatedCsrf);
     var freshCookie = authenticatedCsrf.getResponse().getCookie(XSRF_COOKIE);
     assertNotNull(freshCookie, "A fresh post-login CSRF cookie should be issued");
+    assertEquals(freshToken, freshCookie.getValue());
 
     mvc.perform(get("/api/auth/me").session(session))
         .andExpect(status().isOk())
@@ -113,6 +142,7 @@ class AuthenticationCsrfFlowIntegrationTest {
 
     mvc.perform(
             post("/api/requests")
+                .header("Origin", FRONTEND_ORIGIN)
                 .session(session)
                 .cookie(freshCookie)
                 .contentType("application/json")
@@ -121,6 +151,7 @@ class AuthenticationCsrfFlowIntegrationTest {
 
     mvc.perform(
             post("/api/requests")
+                .header("Origin", FRONTEND_ORIGIN)
                 .session(session)
                 .cookie(freshCookie)
                 .header("X-XSRF-TOKEN", "invalid-token")
@@ -131,6 +162,7 @@ class AuthenticationCsrfFlowIntegrationTest {
     MvcResult submitted =
         mvc.perform(
                 post("/api/requests")
+                    .header("Origin", FRONTEND_ORIGIN)
                     .session(session)
                     .cookie(freshCookie)
                     .header("X-XSRF-TOKEN", freshToken)
@@ -144,6 +176,7 @@ class AuthenticationCsrfFlowIntegrationTest {
 
     mvc.perform(
             post("/api/auth/logout")
+                .header("Origin", FRONTEND_ORIGIN)
                 .session(session)
                 .cookie(freshCookie)
                 .header("X-XSRF-TOKEN", freshToken))

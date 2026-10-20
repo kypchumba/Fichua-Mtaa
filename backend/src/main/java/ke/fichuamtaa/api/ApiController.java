@@ -17,7 +17,6 @@ import org.springframework.http.*;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -55,7 +54,7 @@ class ApiController {
       ActiveSessionRegistry sessionRegistry,
       CsrfTokenRepository csrfTokenRepository,
       @Value("${SESSION_COOKIE_SECURE:false}") boolean secureSessionCookie,
-      @Value("${SESSION_SAME_SITE:lax}") String sessionSameSite,
+      @Value("${SESSION_SAME_SITE:none}") String sessionSameSite,
       @Value("${CLOUDINARY_CLOUD_NAME:}") String cloudName,
       @Value("${CLOUDINARY_API_KEY:}") String cloudKey,
       @Value("${CLOUDINARY_API_SECRET:}") String cloudSecret) {
