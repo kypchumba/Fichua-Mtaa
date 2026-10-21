@@ -1,4 +1,6 @@
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -16,7 +18,7 @@ afterEach(() => {
 });
 
 describe("public landing page account links", () => {
-  it("keeps the hero focused on centered content without decorative artwork", () => {
+  it("keeps the Kenya boundary as a decorative, non-interactive hero watermark", () => {
     const { container } = render(
       <MemoryRouter>
         <Home />
@@ -26,7 +28,16 @@ describe("public landing page account links", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       /Sauti yako,\s*Jukumu letu\./,
     );
-    expect(container.querySelector(".hero-art")).toBeNull();
+    const watermark = container.querySelector(".hero-map-watermark");
+    expect(watermark).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector(".hero h1")).toBeInTheDocument();
+    const outline = readFileSync(
+      resolve(process.cwd(), "public/kenya-outline.svg"),
+      "utf8",
+    );
+    expect(outline).toContain("Natural Earth 10m Admin 0 Countries");
+    expect(outline).toContain('fill="none"');
+    expect(outline).toContain('stroke="#28664d"');
   });
 
   it("keeps four briefing service cards that lead to the dedicated page", () => {

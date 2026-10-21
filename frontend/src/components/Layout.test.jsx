@@ -1,4 +1,6 @@
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -92,6 +94,23 @@ describe("role-specific navigation", () => {
     expect(navigation).not.toHaveTextContent(
       "New to Fichua Mtaa? Create an account.",
     );
+  });
+
+  it("uses the supplied logo asset in the navbar, footer and browser favicon", () => {
+    renderLayout();
+
+    const logos = screen.getAllByRole("img", { name: "Fichua Mtaa logo" });
+    expect(logos).toHaveLength(2);
+    logos.forEach((logo) => expect(logo).toHaveAttribute("src", "/logo.png"));
+    logos.forEach((logo) => expect(logo.parentElement).toHaveClass("brand-mark"));
+
+    const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
+    expect(html).toMatch(/<link rel="icon" type="image\/png" href="\/logo\.png"\s*\/>/);
+
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(styles).toMatch(/\.brand-mark\s*\{[^}]*width:\s*37px;[^}]*height:\s*37px;[^}]*flex:\s*0 0 37px;/s);
+    expect(styles).toMatch(/\.brand-mark img\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*object-fit:\s*fill;/s);
+    expect(styles).toMatch(/\.footer-brand \.brand-mark\s*\{[^}]*width:\s*31px;[^}]*height:\s*31px;[^}]*flex:\s*0 0 31px;/s);
   });
 
   it("keeps citizen request actions out of administrator navigation", () => {

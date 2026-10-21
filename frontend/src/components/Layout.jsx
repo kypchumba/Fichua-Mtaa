@@ -54,7 +54,9 @@ export function Layout() {
       >
         <div className="header-inner">
           <Link className="brand" to="/">
-            <span className="brand-mark">FM</span>
+            <span className="brand-mark">
+              <img src="/logo.png" alt="Fichua Mtaa logo" />
+            </span>
             <span>
               Fichua <b>Mtaa</b>
               <small>Community services portal</small>
@@ -139,7 +141,9 @@ export function Layout() {
       <footer className="footer">
         <div className="footer-inner">
           <div className="brand footer-brand">
-            <span className="brand-mark">FM</span>
+            <span className="brand-mark">
+              <img src="/logo.png" alt="Fichua Mtaa logo" />
+            </span>
             <span>
               Fichua <b>Mtaa</b>
               <small>Service starts with being heard.</small>

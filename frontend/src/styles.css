@@ -81,8 +81,7 @@ textarea:focus-visible {
   color: #d0dfd4;
 }
 .site-header .brand-mark {
-  background: #fff;
-  color: var(--green);
+  border-color: rgb(255 255 255 / 72%);
 }
 .header-inner {
   max-width: 1160px;
@@ -117,13 +116,18 @@ textarea:focus-visible {
 .brand-mark {
   width: 37px;
   height: 37px;
-  background: var(--green);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  border-radius: 5px;
-  font: 700 var(--text-xs) var(--heading);
-  letter-spacing: -0.5px;
+  flex: 0 0 37px;
+  flex-shrink: 0;
+  display: block;
+  border: 1px solid #cbd8ce;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
 }
 .site-header nav {
   display: flex;
@@ -161,10 +165,26 @@ textarea:focus-visible {
   cursor: pointer;
 }
 .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: #fff;
   color: var(--ink);
 }
+.hero-map-watermark {
+  position: absolute;
+  z-index: 0;
+  inset-block: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(220px, 36vw, 390px);
+  background: url("/kenya-outline.svg") center / contain no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+}
 .hero-inner {
+  position: relative;
+  z-index: 1;
   max-width: 900px;
   margin: auto;
   padding: clamp(4.5rem, 9vw, 7rem) 28px clamp(4.75rem, 8vw, 6.5rem);
@@ -482,15 +502,16 @@ textarea:focus-visible {
   gap: 20px;
 }
 .footer-brand {
+  flex: 0 0 auto;
   font-size: 0.9375rem;
   color: #fff;
 }
 .footer-brand .brand-mark {
-  background: #fff;
-  color: var(--green);
   width: 31px;
   height: 31px;
-  font-size: var(--text-xs);
+  flex: 0 0 31px;
+  flex-shrink: 0;
+  border-color: rgb(255 255 255 / 72%);
 }
 .footer-inner > p,
 .footer-inner > span {
@@ -2324,6 +2345,13 @@ td a:not(.table-view):hover {
   }
   .hero-inner {
     padding: 4rem 22px 4.25rem;
+  }
+  .hero-map-watermark {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: clamp(190px, 54vw, 270px);
+    opacity: 0.25;
   }
   .hero h1 {
     font-size: clamp(2.25rem, 10vw, 2.75rem);

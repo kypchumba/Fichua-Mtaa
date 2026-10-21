@@ -12,6 +12,7 @@ export default function Home() {
         </div>
       )}
       <section className="hero">
+        <div className="hero-map-watermark" aria-hidden="true" />
         <div className="hero-inner">
           <div className="hero-copy">
             <span className="eyebrow">
