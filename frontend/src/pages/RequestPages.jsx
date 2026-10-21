@@ -16,6 +16,7 @@ import {
   StatusBadge,
 } from "../components/UI";
 import { BackLink } from "../components/BackLink";
+import { FlashToast } from "../components/FlashToast";
 import { ImageLightbox } from "../components/ImageLightbox";
 import { RequestTitleField } from "../components/RequestTitleField";
 import {
@@ -28,13 +29,9 @@ const requestFilterCategories = [
   ...new Set([...serviceCategories, ...LEGACY_SERVICE_CATEGORIES]),
 ];
 
-// Keep existing administrator assignment choices while retaining old category labels.
+// Include current services and historical categories so old requests stay editable.
 const adminAssignmentCategories = [
-  "Roads and Drainage",
-  "Water Supply",
-  "Waste Collection",
-  "Street Lighting",
-  "Other",
+  ...new Set([...serviceCategories, ...LEGACY_SERVICE_CATEGORIES]),
 ];
 const date = (value) =>
   value
@@ -381,7 +378,12 @@ export function RequestDetails({ admin = false }) {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
   const closeImagePreview = useCallback(() => setImagePreviewOpen(false), []);
+  const dismissNotification = useCallback(() => setNotification(null), []);
+  const notify = useCallback((message, kind = "success") => {
+    setNotification({ message, kind });
+  }, []);
   useEffect(() => {
     api(`${admin ? "/admin" : ""}/requests/${id}`)
       .then(setItem)
@@ -400,6 +402,10 @@ export function RequestDetails({ admin = false }) {
     );
   return (
     <section className="page-wrap detail-page">
+      <FlashToast
+        notification={notification}
+        onDismiss={dismissNotification}
+      />
       <BackLink fallbackTo={admin ? "/admin" : "/requests"}>
         ← Back to {admin ? "all requests" : "my requests"}
       </BackLink>
@@ -479,7 +485,7 @@ export function RequestDetails({ admin = false }) {
                 </small>
               </div>
             ))}
-            <AdminControls item={item} onChange={setItem} />
+            <AdminControls item={item} onChange={setItem} notify={notify} />
           </article>
         )}
       </div>
@@ -494,47 +500,51 @@ export function RequestDetails({ admin = false }) {
   );
 }
 
-function AdminControls({ item, onChange }) {
+function AdminControls({ item, onChange, notify }) {
   const [note, setNote] = useState("");
   const [status, setStatus] = useState(item.status);
   const [category, setCategory] = useState(item.category);
-  const [feedback, setFeedback] = useState(null);
   const [savingNote, setSavingNote] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingCategory, setUpdatingCategory] = useState(false);
   const noteSaving = useRef(false);
+  const statusSaving = useRef(false);
+  const categorySaving = useRef(false);
   const [confirmingResolution, setConfirmingResolution] = useState(false);
   async function updateStatus() {
+    if (statusSaving.current) return;
+    statusSaving.current = true;
     setUpdatingStatus(true);
-    setFeedback(null);
     try {
-      onChange(
-        await api(`/admin/requests/${item.id}/status`, {
-          method: "PATCH",
-          body: JSON.stringify({ status, note: "" }),
-        }),
-      );
+      const updated = await api(`/admin/requests/${item.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, note: "" }),
+      });
+      // Merge the server response so fields omitted by a response remain visible.
+      onChange((current) => ({
+        ...current,
+        ...updated,
+        status: updated?.status || status,
+      }));
+      setStatus(updated?.status || status);
       setConfirmingResolution(false);
-      setFeedback({ message: "Request status updated.", error: false });
-    } catch (e) {
-      setFeedback({ message: e.message, error: true });
+      notify("Request status updated successfully.");
+    } catch {
+      notify("Could not update request status. Please try again.", "error");
     } finally {
+      statusSaving.current = false;
       setUpdatingStatus(false);
     }
   }
   async function saveNote(e) {
     e.preventDefault();
     if (!note.trim()) {
-      setFeedback({
-        message: "Enter an internal note before choosing Save note.",
-        error: true,
-      });
+      notify("Enter an internal note before choosing Save note.", "error");
       return;
     }
     if (noteSaving.current) return;
     noteSaving.current = true;
     setSavingNote(true);
-    setFeedback(null);
     try {
       const saved = await api(`/admin/requests/${item.id}/notes`, {
         method: "POST",
@@ -545,28 +555,34 @@ function AdminControls({ item, onChange }) {
         internalNotes: [...current.internalNotes, saved],
       }));
       setNote("");
-      setFeedback({ message: "Internal note saved.", error: false });
-    } catch (e) {
-      setFeedback({ message: e.message, error: true });
+      notify("Internal note saved successfully.");
+    } catch {
+      notify("Could not save the internal note. Please try again.", "error");
     } finally {
       noteSaving.current = false;
       setSavingNote(false);
     }
   }
   async function updateCategory() {
+    if (categorySaving.current) return;
+    categorySaving.current = true;
     setUpdatingCategory(true);
-    setFeedback(null);
     try {
-      onChange(
-        await api(`/admin/requests/${item.id}/category`, {
-          method: "PATCH",
-          body: JSON.stringify({ category }),
-        }),
-      );
-      setFeedback({ message: "Service category updated.", error: false });
-    } catch (e) {
-      setFeedback({ message: e.message, error: true });
+      const updated = await api(`/admin/requests/${item.id}/category`, {
+        method: "PATCH",
+        body: JSON.stringify({ category }),
+      });
+      onChange((current) => ({
+        ...current,
+        ...updated,
+        category: updated?.category || category,
+      }));
+      setCategory(updated?.category || category);
+      notify("Service category updated successfully.");
+    } catch {
+      notify("Could not update service category. Please try again.", "error");
     } finally {
+      categorySaving.current = false;
       setUpdatingCategory(false);
     }
   }
@@ -577,7 +593,11 @@ function AdminControls({ item, onChange }) {
         className="request-management-controls"
         aria-label="Request updates"
       >
-        {item.status !== "RESOLVED" && (
+        {item.status === "RESOLVED" ? (
+          <p className="request-resolved-message" role="status">
+            This issue has been fully resolved.
+          </p>
+        ) : (
           <div className="status-control">
             <label htmlFor="nextStatus">Change status</label>
             <select
@@ -597,6 +617,7 @@ function AdminControls({ item, onChange }) {
             </select>
             <Button
               type="button"
+              className="request-status-button"
               disabled={updatingStatus || status === item.status}
               onClick={() =>
                 status === "RESOLVED"
@@ -622,6 +643,7 @@ function AdminControls({ item, onChange }) {
           <Button
             type="button"
             variant="outline"
+            className="assign-service-button"
             disabled={updatingCategory || category === item.category}
             onClick={updateCategory}
           >
@@ -678,14 +700,6 @@ function AdminControls({ item, onChange }) {
           {savingNote ? "Saving note…" : "Save note"}
         </Button>
       </form>
-      {feedback && (
-        <p
-          className={`inline-feedback${feedback.error ? " is-error" : ""}`}
-          role="status"
-        >
-          {feedback.message}
-        </p>
-      )}
     </>
   );
 }

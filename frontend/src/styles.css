@@ -1561,6 +1561,16 @@ textarea:focus-visible {
   display: grid;
   gap: 4px;
 }
+.request-resolved-message {
+  margin: 12px 0 18px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--green);
+  border-radius: 3px;
+  background: var(--pale);
+  color: #2d6147;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
 .status-control {
   display: grid;
   grid-template-columns: minmax(100px, 140px) minmax(140px, 1fr) auto;
@@ -1576,17 +1586,99 @@ textarea:focus-visible {
 .status-control select {
   width: auto;
   min-height: 37px;
+  cursor: pointer;
+  transition: border-color 0.18s, background-color 0.18s;
+}
+.status-control select:hover:not(:disabled) {
+  border-color: var(--green);
+  background-color: #fbfdfb;
+}
+.status-control .request-status-button,
+.status-control .assign-service-button {
+  cursor: pointer;
+}
+.status-control .request-status-button:hover:not(:disabled),
+.status-control .assign-service-button:hover:not(:disabled) {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgb(40 102 77 / 10%);
+}
+.status-control .request-status-button:focus-visible,
+.status-control .assign-service-button:focus-visible,
+.status-control select:focus-visible {
+  outline: 3px solid #94c8a7;
+  outline-offset: 2px;
 }
 .status-control .button,
 .internal-notes form .button {
   min-height: 37px;
 }
-.inline-feedback {
-  font-size: var(--text-xs);
-  color: #32734d;
+.flash-toast-region {
+  position: fixed;
+  z-index: 3000;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  width: min(440px, calc(100vw - 28px));
+  transform: translateX(-50%);
+  pointer-events: none;
 }
-.inline-feedback.is-error {
+.flash-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid #c8d9ce;
+  border-left: 4px solid var(--green);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgb(25 52 37 / 14%);
+  pointer-events: auto;
+}
+.flash-toast-error {
+  border-color: #e6c7c3;
+  border-left-color: #a2342e;
+}
+.flash-toast-mark {
+  display: grid;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf3ed;
+  color: var(--green);
+  font-weight: 800;
+}
+.flash-toast-error .flash-toast-mark {
+  background: #faecea;
   color: #a2342e;
+}
+.flash-toast-message {
+  flex: 1;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.flash-toast-dismiss {
+  display: grid;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #58685f;
+  cursor: pointer;
+  font-size: 1.35rem;
+}
+.flash-toast-dismiss:hover {
+  background: #edf3ef;
+  color: var(--green);
+}
+.flash-toast-dismiss:focus-visible {
+  outline: 3px solid #94c8a7;
+  outline-offset: 2px;
 }
 .admin-page {
   padding-top: 45px;

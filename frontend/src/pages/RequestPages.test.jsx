@@ -1,4 +1,6 @@
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
@@ -10,6 +12,8 @@ import {
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "../api/client";
 import { RequestDetails } from "./RequestPages";
+
+const stylesheet = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 vi.mock("../api/client", () => ({ api: vi.fn() }));
 
@@ -115,6 +119,147 @@ describe("request image preview", () => {
 });
 
 describe("administrator request controls", () => {
+  it("updates the displayed status from the successful API response", async () => {
+    const updatedReport = {
+      ...report,
+      status: "IN_PROGRESS",
+      updatedAt: "2026-10-19T10:00:00Z",
+      history: [
+        { newStatus: "IN_PROGRESS", changedAt: "2026-10-19T10:00:00Z" },
+      ],
+    };
+    api.mockImplementation((path) =>
+      path === "/admin/requests/31/status"
+        ? Promise.resolve(updatedReport)
+        : Promise.resolve(report),
+    );
+    renderDetails(true);
+    await screen.findByText("Manage request");
+
+    fireEvent.change(screen.getByLabelText("Change status"), {
+      target: { value: "IN_PROGRESS" },
+    });
+    expect(screen.getByRole("button", { name: "Update status" })).toHaveClass(
+      "request-status-button",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Update status" }));
+
+    const toast = await screen.findByRole("status");
+    expect(toast).toHaveTextContent("Request status updated successfully.");
+    expect(toast.parentElement).toHaveClass("flash-toast-region");
+    expect(document.querySelector(".inline-feedback")).not.toBeInTheDocument();
+    expect(document.querySelector(".detail-heading .status")).toHaveTextContent(
+      "IN PROGRESS",
+    );
+    expect(screen.getByText("IN PROGRESS", { selector: "b" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update status" })).toBeInTheDocument();
+    expect(api).toHaveBeenCalledWith(
+      "/admin/requests/31/status",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "IN_PROGRESS", note: "" }),
+      }),
+    );
+  });
+
+  it("blocks duplicate status updates and reports failures", async () => {
+    let rejectStatus;
+    api.mockImplementation((path) => {
+      if (path === "/admin/requests/31/status") {
+        return new Promise((resolve, reject) => {
+          rejectStatus = reject;
+        });
+      }
+      return Promise.resolve(report);
+    });
+    renderDetails(true);
+    await screen.findByText("Manage request");
+    fireEvent.change(screen.getByLabelText("Change status"), {
+      target: { value: "IN_PROGRESS" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Update status" }));
+    const updating = await screen.findByRole("button", { name: "Updating…" });
+    fireEvent.click(updating);
+
+    expect(
+      api.mock.calls.filter(([path]) => path === "/admin/requests/31/status"),
+    ).toHaveLength(1);
+    rejectStatus(new Error("Status service unavailable"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not update request status. Please try again.",
+    );
+    expect(screen.queryByText("Request status updated successfully.")).not.toBeInTheDocument();
+    expect(document.querySelector(".detail-heading .status")).toHaveTextContent(
+      "PENDING",
+    );
+  });
+
+  it("shows a completion message instead of status controls for resolved requests", async () => {
+    api.mockResolvedValue({ ...report, status: "RESOLVED" });
+    renderDetails(true);
+
+    expect(
+      await screen.findByText("This issue has been fully resolved."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Change status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Update status" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Assign service")).toBeInTheDocument();
+  });
+
+  it("sends category assignments to the existing endpoint and updates the displayed category", async () => {
+    const updatedReport = { ...report, category: "Public Facilities" };
+    api.mockImplementation((path) =>
+      path === "/admin/requests/31/category"
+        ? Promise.resolve(updatedReport)
+        : Promise.resolve(report),
+    );
+    renderDetails(true);
+    await screen.findByText("Manage request");
+    const categoryPicker = screen.getByLabelText("Assign service");
+    expect(categoryPicker).toHaveTextContent("Public Facilities");
+    fireEvent.change(categoryPicker, { target: { value: "Public Facilities" } });
+    const assignButton = screen.getByRole("button", { name: "Update service" });
+    expect(assignButton).toHaveClass("assign-service-button");
+    fireEvent.click(assignButton);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Service category updated successfully.",
+    );
+    expect(document.querySelector(".detail-heading p")).toHaveTextContent(
+      "Public Facilities",
+    );
+    expect(api).toHaveBeenCalledWith(
+      "/admin/requests/31/category",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ category: "Public Facilities" }),
+      }),
+    );
+  });
+
+  it("shows a failure toast for an unsuccessful service assignment and re-enables the button", async () => {
+    api.mockImplementation((path) =>
+      path === "/admin/requests/31/category"
+        ? Promise.reject(new Error("Category update rejected"))
+        : Promise.resolve(report),
+    );
+    renderDetails(true);
+    await screen.findByText("Manage request");
+    fireEvent.change(screen.getByLabelText("Assign service"), {
+      target: { value: "Other" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Update service" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not update service category. Please try again.",
+    );
+    expect(screen.queryByText("Service category updated successfully.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update service" })).toBeEnabled();
+    expect(document.querySelector(".detail-heading p")).toHaveTextContent(
+      "Street Lighting",
+    );
+  });
+
   it("keeps service and status updates independent of optional internal notes", async () => {
     api.mockResolvedValue(report);
     renderDetails(true);
@@ -163,7 +308,7 @@ describe("administrator request controls", () => {
     expect(api).toHaveBeenCalledTimes(1);
     fireEvent.click(save);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    expect(await screen.findByRole("alert")).toHaveTextContent(
       "Enter an internal note before choosing Save note.",
     );
     expect(api).toHaveBeenCalledTimes(1);
@@ -194,9 +339,18 @@ describe("administrator request controls", () => {
     ).toHaveLength(1);
 
     failSave();
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Notes service unavailable",
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not save the internal note. Please try again.",
     );
     expect(screen.getByRole("button", { name: "Save note" })).toBeEnabled();
+  });
+
+  it("styles request controls with pointer, hover and keyboard focus feedback", () => {
+    expect(stylesheet).toMatch(/\.button\s*\{[^}]*cursor:\s*pointer/s);
+    expect(stylesheet).toMatch(/\.status-control select\s*\{[^}]*cursor:\s*pointer/s);
+    expect(stylesheet).toMatch(/\.request-status-button:hover:not\(:disabled\)/);
+    expect(stylesheet).toMatch(/\.assign-service-button:hover:not\(:disabled\)/);
+    expect(stylesheet).toMatch(/\.request-status-button:focus-visible/);
+    expect(stylesheet).toMatch(/\.assign-service-button:focus-visible/);
   });
 });

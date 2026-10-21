@@ -322,7 +322,9 @@ export default function Admin() {
         </div>
         {requests && !requests.content.length ? (
           <EmptyState title="No requests found">
-            Try changing the search or filters.
+            {filters.status
+              ? `No requests match ${filters.status.replace("_", " ")}. If you just updated a request, its new status may no longer match this filter. Choose All statuses to find it.`
+              : "Try changing the search or filters."}
           </EmptyState>
         ) : requests?.content?.length ? (
           <div className="table-scroll">
