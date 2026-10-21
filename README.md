@@ -9,9 +9,13 @@ Fichua Mtaa is an independent educational project inspired by Kenyan county serv
 - **Citizen portal:** Register, sign in, submit reports and track request status and history.
 - **Request management:** Unique reference numbers, categories, search, filters and optional photo evidence.
 - **Admin dashboard:** Manage reports, update statuses, add private notes and view service-delivery analytics.
-- **Interactive map:** Select a report location within Kenya using an optional map pin or browser location.
+- **Attach 1 photo:** Take one clear photo of the affected area and attach it to your message for better evidence.
 - **Account management:** Secure profile management and permanent account deletion with confirmation.
 - **Security:** BCrypt password hashing, server-managed sessions, CSRF protection, role-based authorization and server-side validation.
+
+> [!WARNING]
+> **Password reset and account recovery are not available. Remember your password.**
+Passwords are securely hashed in the database and cannot be retrieved as plain text. OTP-based password reset and account recovery are not currently implemented. Please remember your password when registering, as you will not be able to reset it through the application if you forget it.
 
 Request statuses follow `PENDING → IN_PROGRESS → RESOLVED`.
 
@@ -22,7 +26,6 @@ Request statuses follow `PENDING → IN_PROGRESS → RESOLVED`.
 | Frontend | React, Vite, JavaScript, React Router, plain CSS |
 | Backend | Java 21, Spring Boot, Maven, Spring Security |
 | Database | PostgreSQL, Spring Data JPA, Hibernate, Flyway |
-| Maps | Leaflet, OpenStreetMap |
 | Charts | Recharts |
 | Image storage | Cloudinary (optional) |
 | Deployment | Render, Neon PostgreSQL |
@@ -34,8 +37,8 @@ Fichua-Mtaa/
 ├── frontend/       # React application
 ├── backend/        # Spring Boot REST API
 ├── README.md
-├── render.yaml
-└── vercel.json
+└── render.yaml
+ 
 ```
 
 The frontend communicates with the backend through REST APIs. The backend handles authentication, permissions, request processing, analytics and database operations.
@@ -144,6 +147,7 @@ Automated tests should use isolated test data and must never connect to the prod
 - Request status transitions and input validation are enforced by the backend.
 - Account deletion removes the citizen's reports and associated history through database transactions.
 - Optional image attachments are size-limited, validated and stored externally rather than relying on temporary application storage.
+- The images are compressed before being sent, you can preview the image after compression.
 
 The application is an educational demonstration and should undergo additional security and operational review before use in a real public service.
 
