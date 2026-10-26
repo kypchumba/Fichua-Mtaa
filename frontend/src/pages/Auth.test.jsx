@@ -51,6 +51,21 @@ describe("authentication forms", () => {
     authMocks.register.mockReset();
   });
 
+  it.each([
+    ["Sign In", false],
+    ["Register", true],
+  ])("shows the backend cold-start notice on the %s page", (page, register) => {
+    renderAuth(register);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "FIRST VISIT? THE BACKEND MAY NEED 1-3 MINUTES TO WAKE UP",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/uses Render's free hosting, so the first request might take a while to be processed/i),
+    ).toBeInTheDocument();
+  });
   it("toggles a login password without changing its value", () => {
     renderAuth();
     const password = screen.getByLabelText(/^Password/);

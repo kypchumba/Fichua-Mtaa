@@ -886,7 +886,40 @@ textarea:focus-visible {
   color: var(--muted);
   margin: 0 0 22px;
 }
-.auth-panel form {
+.cold-start-notice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 14px 15px;
+  color: var(--ink);
+  background: #f5f8f4;
+  border: 1px solid #cbd9ce;
+  border-left: 4px solid var(--red);
+  border-radius: var(--radius);
+}
+.cold-start-icon {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  stroke: var(--red);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cold-start-notice h3 {
+  margin: 0 0 6px;
+  color: var(--red);
+  font: 800 var(--text-xs)/1.45 var(--heading);
+  letter-spacing: 0.025em;
+}
+.cold-start-notice p {
+  margin: 0;
+  color: #4f6056;
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}.auth-panel form {
   display: grid;
   gap: 16px;
 }

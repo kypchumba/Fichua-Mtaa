@@ -289,7 +289,7 @@ export function AuthPage({ register = false }) {
       )}
       <div className="auth-panel">
         <span className="eyebrow">
-          {register ? "CREATE YOUR ACCOUNT" : "CITIZEN PORTAL"}
+          {register ? "CREATE YOUR ACCOUNT" : "PORTAL"}
         </span>
         <h2>{register ? "Join Fichua Mtaa" : "Sign in to continue"}</h2>
         <p>
@@ -297,6 +297,26 @@ export function AuthPage({ register = false }) {
             ? "It only takes a minute to get started."
             : "Your community is glad to have you back."}
         </p>
+        <aside className="cold-start-notice" aria-labelledby="cold-start-title">
+          <svg
+            aria-hidden="true"
+            className="cold-start-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <div>
+            <h3 id="cold-start-title">
+              FIRST VISIT? THE BACKEND MAY NEED 1-3 MINUTES TO WAKE UP
+            </h3>
+            <p>
+              Fichua-Mtaa uses Render&apos;s free hosting, so the first request might take
+              a while to be processed as backend is waking after being idle. 
+            </p>
+          </div>
+        </aside>
         <Alert>
           {error ||
             (location.state?.sessionExpired
