@@ -366,7 +366,6 @@ export function AuthPage({ register = false }) {
               }
             />
           }
-          {register && (
             <ul
               className="password-requirements"
               aria-label="Registration security checklist"
@@ -375,7 +374,7 @@ export function AuthPage({ register = false }) {
               {passwordRequirements.map(({ label, test }) => {
                 const met = test(fields.password);
                 return (
-                  <li className={met ? "is-met" : ""} key={label}>
+                  <li className={met ? "is-met" : "not-met"} key={label}>
                     <span aria-hidden="true">{met ? "✓" : "○"}</span>
                     {label}
                     <span className="requirement-state">
@@ -385,7 +384,6 @@ export function AuthPage({ register = false }) {
                 );
               })}
             </ul>
-          )}
           {register && (
             <Field
               label="Confirm password"
@@ -403,7 +401,6 @@ export function AuthPage({ register = false }) {
           )}
           <Button disabled={loading}>
             {loading ? "Please wait…" : register ? "Create account" : "Sign in"}{" "}
-            <span>→</span>
           </Button>
         </form>
         <p className="auth-switch">
