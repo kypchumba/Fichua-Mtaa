@@ -40,7 +40,7 @@ export function CitizenDashboard() {
           </p>
         </div>
         <Link className="button button-primary" to="/requests/new">
-          Submit a request <span aria-hidden="true">→</span>
+          Submit a request
         </Link>
       </div>
 

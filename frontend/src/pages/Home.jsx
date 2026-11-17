@@ -40,9 +40,9 @@ export default function Home() {
               >
                 {user?.role === "ADMIN"
                   ? "Open dashboard"
-                  : "Report an issue"} <span aria-hidden="true">→</span>
+                  : "Report an issue"}
               </Link>
-              <Link className="hero-link" to="/services">
+              <Link className="button hero-link" to="/services">
                 Explore services
               </Link>
             </div>
@@ -58,7 +58,7 @@ export default function Home() {
         <div className="steps">
           <article>
             <span className="step-no">01</span>
-            <div className="step-icon">↗</div>
+            <div className="step-icon">💬</div>
             <h3>Tell us what’s wrong</h3>
             <p>
               Choose a service, describe the issue and where it’s happening.
@@ -66,7 +66,7 @@ export default function Home() {
           </article>
           <article>
             <span className="step-no">02</span>
-            <div className="step-icon">⌕</div>
+            <div className="step-icon">🔍</div>
             <h3>We route your request</h3>
             <p>
               Your report is recorded and shared with the relevant service team.
@@ -74,7 +74,7 @@ export default function Home() {
           </article>
           <article>
             <span className="step-no">03</span>
-            <div className="step-icon">✓</div>
+            <div className="step-icon">✔️</div>
             <h3>Follow every update</h3>
             <p>
               Sign in any time to see status changes and the latest progress.
@@ -92,8 +92,8 @@ export default function Home() {
               in your neighbourhood?
             </h2>
             <p>Start with a service category. We’ll take it from there.</p>
-            <Link className="text-link" to="/services">
-              View all services <span>→</span>
+            <Link className="text-link button" to="/services">
+              View all services
             </Link>
           </div>
           <div className="category-grid">
@@ -107,14 +107,13 @@ export default function Home() {
                   {service.icon}
                 </span>
                 <span>{service.category}</span>
-                <b aria-hidden="true">↗</b>
               </Link>
             ))}
           </div>
         </div>
       </section>
       <section className="cta section-wrap">
-        <div className="cta-icon">✳</div>
+        <div className="cta-icon">▶</div>
         <div>
           <span className="eyebrow">BETTER SERVICES START HERE</span>
           <h2>Noticed something? Say something.</h2>
@@ -133,13 +132,12 @@ export default function Home() {
           {user?.role === "ADMIN"
             ? "Open administration"
             : "Submit a request"}{" "}
-          <span>→</span>
         </Link>
       </section>
       {!user && (
         <section aria-label="Account access" className="home-account-actions">
           <div className="home-account-action">
-            <p>New to Fichua Mtaa? Create an account.</p>
+            <p>New here? Create account.</p>
             <Link className="button button-primary" to="/register">
               Register
             </Link>

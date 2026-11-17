@@ -253,7 +253,6 @@ export function RequestCreate() {
               : loading
                 ? "Submitting…"
                 : "Submit request"}{" "}
-            <span>→</span>
           </Button>
           <span>Your report is private to you and service administrators.</span>
         </div>

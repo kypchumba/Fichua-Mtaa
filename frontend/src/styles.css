@@ -20,6 +20,14 @@
   --text-sm: 0.875rem;
   --text-base: 1rem;
 }
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#root > main {
+  flex: 1;
+}
 
 .visually-hidden {
   position: absolute;
@@ -150,6 +158,7 @@ textarea:focus-visible {
 .site-header nav a:hover,
 .site-header nav a.active {
   color: #fff;
+  border-bottom: 2px solid white;
 }
 .site-header nav .nav-signin {
   border: 1px solid rgb(255 255 255 / 58%);
@@ -270,9 +279,9 @@ textarea:focus-visible {
   background: #f3ead7;
 }
 .button-outline {
+  color: #496052;
+  border: 1px solid #ced9d0;
   background: #fff;
-  border: 1px solid var(--line);
-  color: #375244;
 }
 .hero .button-light {
   background: var(--green);
@@ -283,9 +292,11 @@ textarea:focus-visible {
 }
 .hero-link {
   font-size: var(--text-sm);
-  color: var(--green-2);
-  border-bottom: 1px solid #9ab6a4;
-  padding-bottom: 5px;
+  background: var(--green);
+  color: #fff;
+}
+.hero-link:hover {
+  background: #235b42;
 }
 .section-wrap {
   max-width: 1104px;
@@ -370,12 +381,12 @@ textarea:focus-visible {
 .text-link {
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--green-2);
-  border-bottom: 1px solid #9ab6a4;
+  color: #fff;
+  background: var(--green);
   padding-bottom: 5px;
 }
-.text-link span {
-  padding-left: 8px;
+.text-link:hover {
+  background: var(--green-2)
 }
 .category-grid {
   display: grid;
@@ -460,13 +471,13 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  max-width: 1104px;
+  max-width: 700px;
   margin: 0 auto;
-  padding: 0 28px 36px;
+  padding: 28px 36px;
 }
 .home-account-action {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 18px;
   min-width: 0;
@@ -483,6 +494,7 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 .home-account-action .button {
+  margin-top: 6px;
   min-width: 112px;
   min-height: 44px;
   justify-content: center;
@@ -603,6 +615,9 @@ textarea:focus-visible {
     transition-duration: 0.01ms;
   }
 }
+.sign-out:hover {
+  background: #e7e8ff;
+}
 .signout-backdrop {
   position: fixed;
   z-index: 1100;
@@ -672,7 +687,8 @@ textarea:focus-visible {
   outline-offset: 4px;
 }
 .service-card:hover {
-  border-color: #9eb7a5;
+  border-color: 2px solid var(--green);
+  background:var(--cream);
 }
 .service-icon {
   width: 40px;
@@ -966,11 +982,6 @@ textarea:focus-visible {
   flex-wrap: wrap;
   gap: 9px;
 }
-.button-outline {
-  color: #496052;
-  border: 1px solid #ced9d0;
-  background: #fff;
-}
 .field {
   display: flex;
   flex-direction: column;
@@ -1115,10 +1126,17 @@ textarea:focus-visible {
   color: #9a6a39;
 }
 .password-requirements li.is-met {
-  color: #2f704b;
+  color: var(--green);
 }
 .password-requirements li.is-met > span:first-child {
-  color: #2f704b;
+  color: var(--green);
+  font-weight: 700;
+}
+.password-requirements li.not-met {
+  color: var(--red);
+}
+.password-requirements li.not-met > span:first-child {
+  color: var(--red);
   font-weight: 700;
 }
 .requirement-state {
@@ -1294,6 +1312,9 @@ textarea:focus-visible {
 .list-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
   gap: 12px;
   border-block: 1px solid var(--line);
   padding: 14px 0;
@@ -1317,6 +1338,15 @@ textarea:focus-visible {
   margin-left: auto;
   font-size: var(--text-xs);
   color: var(--muted);
+}
+.list-toolbar .request-search {
+  flex: 1 1 180px;
+  min-width: 0;
+  max-width: 100%;
+}
+.list-toolbar select {
+  min-width: 0;
+  max-width: 100%;
 }
 .request-list {
   border-top: 1px solid var(--line);
@@ -2131,16 +2161,17 @@ td a:not(.table-view):hover {
   backdrop-filter: blur(5px);
 }
 .account-delete-dialog {
+  border: 2px solid var(--red);
   width: min(100%, 540px);
   max-height: min(90vh, 760px);
   overflow-y: auto;
   padding: clamp(24px, 5vw, 38px);
-  border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
   color: var(--ink);
 }
 .account-delete-dialog h2 {
+  color: var(--red);
   margin: 12px 0;
   font: 700 clamp(1.375rem, 4vw, 1.75rem) var(--heading);
   line-height: 1.2;
@@ -2153,9 +2184,16 @@ td a:not(.table-view):hover {
 .account-delete-dialog .account-delete-alternative {
   margin-top: 22px;
   padding-left: 14px;
-  border-left: 2px solid var(--green-2);
+  border-left: 3px solid var(--green-2);
+  border-radius: 10px;
+}
+.account-delete-cancel {
+  background: rgb(101, 133, 219);
+  color: #fff;
 }
 .account-delete-contact {
+  background: #348536;
+  color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2313,6 +2351,7 @@ td a:not(.table-view):hover {
   .citizen-header-navigation.menu-open nav.citizen-navigation a:hover,
   .citizen-header-navigation.menu-open nav.citizen-navigation a:focus-visible {
     background: #f1f6f2;
+    color: #000;
   }
   .citizen-header-navigation.menu-open nav.citizen-navigation a.active {
     width: 100%;
@@ -2440,7 +2479,7 @@ td a:not(.table-view):hover {
   .home-account-actions {
     display: grid;
     gap: 10px;
-    padding: 0 22px 34px;
+    padding: 22px 34px;
   }
   .home-account-action {
     display: grid;
@@ -2647,5 +2686,15 @@ td a:not(.table-view):hover {
   }
   .password-requirements {
     grid-template-columns: 1fr;
+  }
+  .list-toolbar {
+    gap: 10px;
+  }
+  .list-toolbar .request-search {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .list-toolbar > span {
+    margin-left: auto;
   }
 }

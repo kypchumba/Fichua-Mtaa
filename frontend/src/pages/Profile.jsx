@@ -120,7 +120,7 @@ export default function Profile() {
         <h2>Account options</h2>
         <p>Deleting your account permanently removes your profile and reports.</p>
         <div className="profile-account-actions">
-          <SignOutControl className="button button-outline" />
+          <SignOutControl className="button sign-out button-outline" />
           <button
             className="button button-danger-outline"
             onClick={() => {
@@ -158,7 +158,7 @@ export default function Profile() {
                 </p>
                 <div className="account-delete-actions">
                   <button
-                    className="button button-outline"
+                    className="button button-outline account-delete-cancel"
                     onClick={closeModal}
                     type="button"
                   >
